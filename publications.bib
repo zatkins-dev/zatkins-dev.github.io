@@ -1,0 +1,44 @@
+
+@inproceedings{erlandson_resilient_2023,
+  title      = {Resilient s-{ACD} for Asynchronous Collaborative Solutions of Systems of Linear Equations},
+  rights     = {All rights reserved},
+  url        = {https://annals-csis.org/Volume_35/drp/8932.html},
+  doi        = {10.15439/2023F8932},
+  abstract   = {Solving systems of linear equations is a critical component of nearly all scientiﬁc computing methods. Traditional algorithms that rely on synchronization become prohibitively expensive in computing paradigms where communication is costly, such as heterogeneous hardware, edge computing, and unreliable environments. In this paper, we introduce an s-step Approximate Conjugate Directions (s-{ACD}) method and develop resiliency measures that can address a variety of different data error scenarios. This method leverages a Conjugate Gradient ({CG}) approach locally while using Conjugate Directions ({CD}) globally to achieve asynchronicity. We demonstrate with numerical experiments that s-{ACD} admits scaling with respect to the condition number that is comparable with {CG} on the tested 2D Poisson problem. Furthermore, through the addition of resiliency measures, our method is able to cope with data errors, allowing it to be used effectively in unreliable environments.},
+  eventtitle = {18th Conference on Computer Science and Intelligence Systems},
+  pages      = {441--450},
+  author     = {Erlandson, Lucas and Atkins, Zachary and Fox, Alyson and Vogl, Christopher and Miedlar, Agnieszka and Ponce, Colin},
+  urldate    = {2025-09-01},
+  date       = {2023-09-26},
+  langid     = {english}
+}
+
+@inproceedings{atkins_distribution_2021,
+  title     = {Distribution system voltage prediction from smart inverters using decentralized regression},
+  url       = {https://ieeexplore.ieee.org/abstract/document/9637900/},
+  doi       = {10.1109/PESGM46819.2021.9637900},
+  abstract  = {As photovoltaic ({PV}) penetration continues to rise and smart inverter functionality continues to expand, smart inverters and other distributed energy resources ({DERs}) will play increasingly important roles in distribution system power management and security. In this paper, it is demonstrated that a constellation of smart inverters in a simulated distribution circuit can enable precise voltage predictions using an asynchronous and decentralized prediction algorithm. Using simulated data and a constellation of 15 inverters in a ring communication topology, the Cola algorithm is shown to accomplish the learning task required for voltage magnitude prediction with far less communication overhead than fully connected P2P learning protocols. Additionally, a dynamic stopping criterion is proposed that does not require a regularizer like the original Cola stopping criterion.},
+  pages     = {1--5},
+  booktitle = {2021 {IEEE} Power \& Energy Society General Meeting ({PESGM})},
+  publisher = {{IEEE}},
+  author    = {Atkins, Zachary R. and Vogl, Christopher J. and Madduri, Achintya and Duan, Nan and Miedlar, Agnieszka K. and Merl, Daniel},
+  urldate   = {2025-09-01},
+  date      = {2021}
+}
+
+@article{vogl_modifying_2024,
+  title        = {Modifying the Asynchronous Jacobi Method for Data Corruption Resilience},
+  volume       = {46},
+  issn         = {1064-8275, 1095-7197},
+  url          = {https://epubs.siam.org/doi/10.1137/23M1605648},
+  doi          = {10.1137/23M1605648},
+  abstract     = {Moving scientific computation from high-performance computing ({HPC}) and cloud computing ({CC}) environments to devices on the edge, i.e., physically near instruments of interest, has received tremendous interest in recent years. Such edge computing environments can operate on data in situ, offering enticing benefits over data aggregation to {HPC} and {CC} facilities that include avoiding costs of transmission, increased data privacy, and real-time data analysis. Because of the inherent unreliability of edge computing environments, new fault-tolerant approaches must be developed before the benefits of edge computing can be realized. Motivated by algorithm-based fault tolerance, a variant of the asynchronous Jacobi ({ASJ}) method is developed that achieves resilience to data corruption by rejecting solution approximations from neighbor devices according to a bound derived from convergence theory. Numerical results on a two-dimensional Poisson problem show that the new rejection criterion, along with a novel approximation to the shortest path length on which the criterion depends, restores convergence for the {ASJ} variant in the presence of certain types data corruption. Numerical results are obtained for when the singular values in the analytic bound are approximated. Additional linear systems are also explored, one with a more dense sparsity pattern and one that includes advection. All results indicate that successful resilience to data corruption depends on whether the bound tightens fast enough to reject corrupted data before the iteration evolution deviates significantly from that predicted by the convergence theory defining the bound. This observation generalizes to future work on algorithm-based fault tolerance for other asynchronous algorithms, including upcoming approaches that leverage Krylov subspaces.},
+  pages        = {A3258--A3281},
+  number       = {5},
+  journaltitle = {{SIAM} Journal on Scientific Computing},
+  shortjournal = {{SIAM} J. Sci. Comput.},
+  author       = {Vogl, Christopher J. and Atkins, Zachary R. and Fox, Alyson and Miȩdlar, Agnieszka and Ponce, Colin},
+  urldate      = {2025-09-01},
+  date         = {2024-10-31},
+  langid       = {english}
+}

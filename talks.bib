@@ -1,0 +1,29 @@
+@unpublished{Talk_SIAMCSE21,
+  title    = {Using Decentralized Learning to Reduce Communication in Column-Partitioned, Multi-Agent Systems},
+  author   = {Atkins, Zachary},
+  year     = {2021},
+  month    = mar,
+  note     = {Minisymposium Talk at \textit{SIAM Conference on Computational Science and Engineering (CSE21)}},
+  abstract = {Modern computing includes platforms which are inherently unreliable or extremely heterogenous, e.g., multi-agent systems, which require asynchronous or decentralized methods that can handle various unreliability conditions such as device failures, communication delays, or data unreliability. Collaborative autonomy is an emerging class of numerical methods that provide reliable computations in unreliable computing environments. This minisymposium brings together researchers to present state of the art methods within collaborative autonomy that ensure robustness in decentralized and asynchronous computing. To this end, it will focus on implementation challenges and algorithmic developments of robust numerical linear algebra methods for current and future unreliable computing environments.},
+  url      = {https://meetings.siam.org/sess/dsp_programsess.cfm?SESSIONCODE=70178}
+}
+
+@unpublished{Talk_CM22,
+  title    = {The Algorithmic Development of a Fully Asynchronous Conjugate Gradient Method},
+  author   = {Atkins, Zachary and Fox, Alyson and Mi\k{e}dlar, Agnieszka and Ponce, Colin and Vogl, Christopher},
+  year     = {2022},
+  month    = apr,
+  abstract = {Decentralized computing environments (DCE), or environments, such as edge computing, which utilize spatially distributed, non-hierarchical, and potentially heterogeneous computational units, present additional challenges such as communication delays and data locality which require asynchronous and resilient iterative methods to be practical. Such algorithms must be capable of progressing toward a solution even if one or more computational units is experiencing slowdowns, either due to poor communication connections or under-performing hardware. Previous work has shown that these challenges can be overcome for stationary iterative methods, such as asynchronous Jacobi (ASJ). In high-performance computing (HPC) settings, Krylov subspace iterative solvers, such as the conjugate gradient method (CG), are preferred for solving linear systems with symmetric positive-definite matrices due to their strong convergence guarantees. Despite requiring synchronous communication across all processors at every iteration, CG performs exceptionally well in shared memory and HPC environments. In DCE, the communication costs of synchronization may be considerably higher, as delays from even one computational unit prevent any other units from continuing. Further, the connection speeds between devices in edge computing will be considerable slower than the high-speed interconnects found in the HPC setting. We have developed an asynchronous CG (ACG) algorithm which removes these synchronization points by utilizing the partial direction vectors received at each iteration to form the next, mutually orthogonal search direction. Initial numerical results demonstrate the number of iterations required for convergence scales with the square root of the condition number of the matrix, as in the traditional CG algorithm. Further, we will present numerical results which compare ACG to CG and ASJ in both reliable computing environments and with injected delays and corruption to demonstrate the algorithmic performance of each for different computing environments.},
+  note     = {Talk at \textit{17th Copper Mountain Conference on Iterative Methods}},
+  url      = {https://easychair.org/smart-program/CM2022/2022-04-04.html#talk:187908}
+}
+
+@unpublished{Talk_CSS24,
+  title    = {Addressing Numerical Challenges in Frictional Contact Simulation for Finite-Deformation Solid Mechanics},
+  author   = {Atkins, Zachary},
+  year     = {2024},
+  month    = oct,
+  abstract = {The numerical simulation of contact phenomena in implicit, finite-deformation solid mechanics codes presents significant challenges due to the introduction of nonlinear and non-smooth operators. These complexities necessitate specialized linear and nonlinear solvers to be performant at scale. In this context, our finite element package, Ratel, distinguishes itself by employing high-order matrix-free methods, contrasting with the prevailing industry standard of low-order solvers applied to sparse assembled Jacobian matrices. Ratel capitalizes on the robust solver infrastructure provided by the Portable Extensible Toolkit for Scientific Computing (PETSc) and integrates the flexible matrix-free library libCEED, enabling highly scalable performance across both CPU and GPU architectures. Ratel supports level-set based frictional contact, which can be enforced by either Nitsche’s method or a penalty method. This talk will elucidate approaches to several numerical challenges associated with these contact formulations, particularly for high-order and matrix-free methods. These challenges include the computation of material stresses on contact surfaces, the solution of the asymmetric, indefinite, and/or poorly conditioned Jacobian matrices, and the numerical instability and slow nonlinear solver convergence behavior due to non-smooth friction models},
+  note     = {Talk at \textit{9th SIAM Central States Section Annual Meeting}},
+  url      = {https://sse.umkc.edu/siam-2024/}
+}
