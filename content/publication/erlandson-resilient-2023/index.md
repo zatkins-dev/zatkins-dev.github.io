@@ -3,7 +3,7 @@ title: Resilient s-ACD for Asynchronous Collaborative Solutions of Systems of Li
   Equations
 authors:
 - Lucas Erlandson
-- Zachary Atkins
+- admin
 - Alyson Fox
 - Christopher Vogl
 - Agnieszka Miedlar
@@ -12,7 +12,7 @@ date: '2023-09-26'
 publishDate: '2025-09-01T01:03:33.214708Z'
 publication_types:
 - paper-conference
-doi: 10.15439/2023F8932
+hugoblox.ids: { doi: 10.15439/2023F8932 }
 abstract: Solving systems of linear equations is a critical component of nearly all
   scientiﬁc computing methods. Traditional algorithms that rely on synchronization
   become prohibitively expensive in computing paradigms where communication is costly,
