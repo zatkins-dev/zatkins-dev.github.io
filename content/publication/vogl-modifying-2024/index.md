@@ -2,7 +2,7 @@
 title: Modifying the Asynchronous Jacobi Method for Data Corruption Resilience
 authors:
 - Christopher J. Vogl
-- Zachary R. Atkins
+- admin
 - Alyson Fox
 - Agnieszka Miȩdlar
 - Colin Ponce
@@ -10,7 +10,7 @@ date: '2024-10-31'
 publishDate: '2025-09-01T01:03:33.232204Z'
 publication_types:
 - article-journal
-doi: 10.1137/23M1605648
+hugoblox.ids: { doi: 10.1137/23M1605648 }
 abstract: Moving scientific computation from high-performance computing (HPC) and
   cloud computing (CC) environments to devices on the edge, i.e., physically near
   instruments of interest, has received tremendous interest in recent years. Such

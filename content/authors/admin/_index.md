@@ -35,6 +35,8 @@ organizations:
 profiles:
   - icon: brands/github
     url: https://github.com/zatkins-dev
+  - icon: brands/mastodon
+    url: https://fosstodon.org/@zatkins
   - icon: brands/linkedin
     url: https://www.linkedin.com/in/zratkins/
   - icon: academicons/google-scholar

@@ -2,7 +2,7 @@
 title: Distribution system voltage prediction from smart inverters using decentralized
   regression
 authors:
-- Zachary R. Atkins
+- admin
 - Christopher J. Vogl
 - Achintya Madduri
 - Nan Duan
@@ -13,7 +13,7 @@ publishDate: '2025-09-01T01:03:33.224629Z'
 publication_types:
 - paper-conference
 publication: '*2021 IEEE Power & Energy Society General Meeting (PESGM)*'
-doi: 10.1109/PESGM46819.2021.9637900
+hugoblox.ids: { doi: 10.1109/PESGM46819.2021.9637900 }
 abstract: As photovoltaic (PV) penetration continues to rise and smart inverter functionality
   continues to expand, smart inverters and other distributed energy resources (DERs)
   will play increasingly important roles in distribution system power management and
