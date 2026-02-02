@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Algorithm Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        /* SVG Interaction Styles */
+        svg {
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: crosshair;
+        }
+
+        .node circle {
+            transition: fill 0.3s, stroke 0.3s;
+            cursor: pointer;
+        }
+
+        .node text {
+            pointer-events: none;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .edge path {
+            transition: stroke 0.3s, stroke-width 0.3s;
+        }
+
+        .edge-hover:hover {
+            stroke: #ef4444 !important; /* red-500 */
+            stroke-width: 4px !important;
+            cursor: pointer;
+        }
+
+        /* Mode-specific cursors */
+        .mode-move { cursor: move; }
+        .mode-edge { cursor: alias; }
+        .mode-source { cursor: pointer; }
+
+        /* UI Panel */
+        .panel {
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- Toolbar -->
+    <div class="panel border-b border-gray-200 p-4 flex flex-wrap gap-4 items-center justify-between z-10 shadow-sm">
+        <div class="flex items-center gap-4">
+            <h1 class="text-lg font-bold text-gray-700 mr-4">Graph Viz</h1>
+
+            <!-- Drawing Tools -->
+            <div class="flex bg-gray-200 rounded-lg p-1 gap-1">
+                <button onclick="setMode('node')" id="btn-node" class="px-3 py-1.5 rounded-md text-sm font-medium bg-white shadow-sm text-gray-800 transition-colors">Add Nodes</button>
+                <button onclick="setMode('edge')" id="btn-edge" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors">Add Edges</button>
+                <button onclick="setMode('move')" id="btn-move" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors">Move</button>
+                <button onclick="setMode('delete')" id="btn-delete" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors text-red-600">Delete</button>
+            </div>
+
+            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                <input type="checkbox" id="is-directed" class="rounded text-blue-600 focus:ring-blue-500">
+                <span>Directed Edges</span>
+            </label>
+
+            <!-- Graph Actions -->
+            <div class="flex items-center gap-2 border-l border-gray-300 pl-4">
+                <button onclick="triggerImport()" class="text-sm text-gray-600 hover:text-gray-900 font-medium px-2 transition-colors" title="Import Graph JSON">Import</button>
+                <button onclick="exportGraphData()" class="text-sm text-gray-600 hover:text-gray-900 font-medium px-2 transition-colors" title="Export Graph JSON">Export</button>
+                <button onclick="clearGraph()" class="text-sm text-red-600 hover:text-red-800 font-medium px-2 transition-colors">Clear</button>
+            </div>
+
+            <!-- Hidden File Input -->
+            <input type="file" id="file-input" class="hidden" accept=".json" onchange="handleFileSelect(event)">
+        </div>
+
+        <!-- Algo Controls -->
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 text-sm text-gray-600 border-r border-gray-300 pr-4">
+                <span>Source:</span>
+                <span id="source-display" class="font-mono font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">None</span>
+                <button onclick="setMode('source')" id="btn-source" class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">Select</button>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="runAlgo('BFS')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">Run BFS</button>
+                <button onclick="runAlgo('DFS')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">Run DFS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 relative flex">
+
+        <!-- SVG Canvas -->
+        <div id="canvas-container" class="flex-1 bg-white relative overflow-hidden">
+            <svg id="main-svg" class="w-full h-full block bg-gray-50" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <!-- Arrowhead marker -->
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="28" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#9ca3af" />
+                    </marker>
+                    <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="28" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#4f46e5" />
+                    </marker>
+                </defs>
+
+                <!-- Groups ensure proper layering -->
+                <g id="layer-edges"></g>
+                <g id="layer-nodes"></g>
+                <!-- UI Layer inside SVG for export -->
+                <g id="layer-ui"></g>
+            </svg>
+
+            <!-- Playback Controls Overlay (HTML, not exported) -->
+            <div id="playback-controls" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border border-gray-200 shadow-lg rounded-full px-6 py-3 flex items-center gap-6 hidden">
+                <div class="flex flex-col">
+                    <span id="algo-title" class="text-xs font-bold text-gray-500 uppercase tracking-wider">Algorithm</span>
+                    <span id="step-counter" class="text-sm font-mono text-gray-800">Step 0 / 0</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="step(-1)" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button onclick="step(1)" class="w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+                <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                <button onclick="exportSVG()" class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Export SVG
+                </button>
+                <div class="w-px h-8 bg-gray-200 mx-2"></div>
+                <button onclick="exitAlgoMode()" class="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-800" title="Exit Algorithm Mode">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    Exit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-10 right-10">
+      <button onclick="location.href='/index.html'" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="80%" height="80%" viewBox="0 0 24 24"><path fill="currentColor" d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1"/></svg>
+      </button>
+    </div>
+
+    <!-- Alert / Toast -->
+    <div id="toast" class="fixed top-20 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg opacity-0 transition-opacity pointer-events-none transform translate-y-2">
+        Message
+    </div>
+
+    <script>
+        // --- State ---
+        let nodes = [];
+        let edges = [];
+        let nextNodeId = 0;
+        let mode = 'node'; // node, edge, source, move, delete
+        let isDirected = false;
+        let sourceNodeId = null;
+
+        // Interaction State
+        let dragSourceNode = null;
+        let dragNodeId = null;
+        let tempEdgeLine = null;
+
+        // Algo State
+        let algoSteps = [];
+        let currentStepIndex = -1;
+        let isAlgoRunning = false;
+
+        // DOM Elements
+        const svg = document.getElementById('main-svg');
+        const layerNodes = document.getElementById('layer-nodes');
+        const layerEdges = document.getElementById('layer-edges');
+        const layerUI = document.getElementById('layer-ui');
+        const playbackControls = document.getElementById('playback-controls');
+        const btnNode = document.getElementById('btn-node');
+        const btnEdge = document.getElementById('btn-edge');
+        const btnMove = document.getElementById('btn-move');
+        const btnDelete = document.getElementById('btn-delete');
+        const btnSource = document.getElementById('btn-source');
+        const sourceDisplay = document.getElementById('source-display');
+
+        // --- Initialization ---
+
+        // Handle resizing for SVG
+        function resizeSVG() {
+            const container = document.getElementById('canvas-container');
+            svg.setAttribute('viewBox', `0 0 ${container.clientWidth} ${container.clientHeight}`);
+        }
+        window.addEventListener('resize', resizeSVG);
+        setTimeout(resizeSVG, 10);
+
+        // --- Drawing Logic ---
+
+        function setMode(newMode) {
+            mode = newMode;
+            // Reset UI buttons
+            [btnNode, btnEdge, btnSource, btnMove, btnDelete].forEach(b => {
+                b.classList.remove('bg-white', 'shadow-sm', 'text-gray-800');
+                b.classList.add('text-gray-600', 'hover:bg-gray-300');
+            });
+
+            // Highlight active button
+            let activeBtn;
+            if (newMode === 'node') activeBtn = btnNode;
+            else if (newMode === 'edge') activeBtn = btnEdge;
+            else if (newMode === 'move') activeBtn = btnMove;
+            else if (newMode === 'delete') activeBtn = btnDelete;
+            else activeBtn = btnSource;
+
+            activeBtn.classList.remove('text-gray-600', 'hover:bg-gray-300');
+            activeBtn.classList.add('bg-white', 'shadow-sm', 'text-gray-800');
+
+            // Reset temp edge if switching modes
+            dragSourceNode = null;
+            dragNodeId = null;
+            render();
+        }
+
+        svg.addEventListener('click', (e) => {
+            if (isAlgoRunning) return;
+
+            // Only add nodes if clicking on empty space in node mode
+            if (mode !== 'node') return;
+
+            const pt = svg.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+            // Check if clicking too close to existing node
+            const tooClose = nodes.some(n => Math.hypot(n.x - svgP.x, n.y - svgP.y) < 40);
+            if (!tooClose) {
+                addNode(svgP.x, svgP.y);
+            }
+        });
+
+        function addNode(x, y) {
+            const id = nextNodeId++;
+            // Label is now just the current count (0, 1, 2...)
+            nodes.push({ id, x, y, label: String(nodes.length) });
+            render();
+        }
+
+        function clearGraph() {
+            nodes = [];
+            edges = [];
+            nextNodeId = 0;
+            sourceNodeId = null;
+            exitAlgoMode();
+            sourceDisplay.textContent = 'None';
+            sourceDisplay.classList.remove('bg-green-100', 'text-green-700');
+            sourceDisplay.classList.add('bg-blue-100', 'text-blue-600');
+            render();
+        }
+
+        function handleNodeMouseDown(e, nodeId) {
+            e.stopPropagation();
+            if (isAlgoRunning) return;
+
+            if (mode === 'delete') {
+                deleteNode(nodeId);
+            } else if (mode === 'edge') {
+                dragSourceNode = nodeId;
+            } else if (mode === 'source') {
+                sourceNodeId = nodeId;
+                sourceDisplay.textContent = nodes.find(n => n.id === nodeId).label;
+                render();
+            } else if (mode === 'move') {
+                dragNodeId = nodeId;
+            }
+        }
+
+        function deleteNode(id) {
+            // Remove node
+            nodes = nodes.filter(n => n.id !== id);
+            // Remove connected edges
+            edges = edges.filter(e => e.source !== id && e.target !== id);
+
+            // Relabel remaining nodes to ensure no gaps (Integers)
+            nodes.forEach((n, index) => {
+                n.label = String(index);
+            });
+
+            // Handle Source Node Updates
+            if (sourceNodeId === id) {
+                sourceNodeId = null;
+                sourceDisplay.textContent = 'None';
+            } else if (sourceNodeId !== null) {
+                // If source wasn't deleted, its label might have changed due to shift
+                const sourceNode = nodes.find(n => n.id === sourceNodeId);
+                if (sourceNode) {
+                    sourceDisplay.textContent = sourceNode.label;
+                }
+            }
+            render();
+        }
+
+        function handleNodeMouseUp(e, targetNodeId) {
+            e.stopPropagation();
+            if (isAlgoRunning) return;
+
+            if (mode === 'move') {
+                dragNodeId = null;
+            }
+
+            if (mode === 'edge' && dragSourceNode !== null) {
+                if (dragSourceNode !== targetNodeId) {
+                    // Avoid duplicates
+                    const exists = edges.some(edge =>
+                        (edge.source === dragSourceNode && edge.target === targetNodeId) ||
+                        (!isDirectedCheck() && edge.source === targetNodeId && edge.target === dragSourceNode)
+                    );
+
+                    if (!exists) {
+                        edges.push({
+                            source: dragSourceNode,
+                            target: targetNodeId,
+                            directed: isDirectedCheck()
+                        });
+                    }
+                }
+                dragSourceNode = null;
+                render();
+            }
+        }
+
+        // Global mouse move for edge dragging visualization
+        svg.addEventListener('mousemove', (e) => {
+            const pt = svg.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+            if (mode === 'move' && dragNodeId !== null) {
+                const node = nodes.find(n => n.id === dragNodeId);
+                if (node) {
+                    node.x = svgP.x;
+                    node.y = svgP.y;
+                    render();
+                }
+            }
+
+            if (mode === 'edge' && dragSourceNode !== null) {
+                render(); // Re-render to show drag line
+
+                const sourceNode = nodes.find(n => n.id === dragSourceNode);
+
+                // Draw temporary line
+                let line = document.getElementById('temp-edge');
+                if (!line) {
+                    line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.id = "temp-edge";
+                    line.setAttribute("stroke", "#9ca3af");
+                    line.setAttribute("stroke-width", "2");
+                    line.setAttribute("stroke-dasharray", "5,5");
+                    layerEdges.appendChild(line);
+                }
+                line.setAttribute("x1", sourceNode.x);
+                line.setAttribute("y1", sourceNode.y);
+                line.setAttribute("x2", svgP.x);
+                line.setAttribute("y2", svgP.y);
+            }
+        });
+
+        // Global mouse up to cancel drag
+        window.addEventListener('mouseup', () => {
+            if (dragSourceNode !== null) {
+                dragSourceNode = null;
+                render();
+            }
+            if (dragNodeId !== null) {
+                dragNodeId = null;
+            }
+        });
+
+        function isDirectedCheck() {
+            return document.getElementById('is-directed').checked;
+        }
+
+        // --- Rendering ---
+
+        function render() {
+            // Clear layers
+            layerNodes.innerHTML = '';
+            layerEdges.innerHTML = '';
+            layerUI.innerHTML = ''; // Only clear UI if not in algo mode or handled separately
+
+            const step = (isAlgoRunning && currentStepIndex >= 0) ? algoSteps[currentStepIndex] : null;
+
+            // 1. Draw Edges
+            edges.forEach((edge, index) => {
+                const s = nodes.find(n => n.id === edge.source);
+                const t = nodes.find(n => n.id === edge.target);
+                if (!s || !t) return;
+
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+                // Calculate geometry
+                const dx = t.x - s.x;
+                const dy = t.y - s.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                // Radius of node is 20
+                const off = 20;
+                if (dist < off * 2) return; // Too close
+
+                const startX = s.x + (dx/dist)*off;
+                const startY = s.y + (dy/dist)*off;
+                const endX = t.x - (dx/dist)*off;
+                const endY = t.y - (dy/dist)*off;
+
+                path.setAttribute("d", `M ${startX} ${startY} L ${endX} ${endY}`);
+                path.setAttribute("stroke", "#9ca3af");
+                path.setAttribute("stroke-width", "2");
+                path.setAttribute("fill", "none");
+
+                // Enable hover effect for deletion
+                if (mode === 'delete' && !isAlgoRunning) {
+                    path.setAttribute("class", "edge-hover");
+                    path.onclick = (e) => {
+                        e.stopPropagation();
+                        edges.splice(index, 1);
+                        render();
+                    };
+                }
+
+                if (edge.directed) {
+                    path.setAttribute("marker-end", "url(#arrowhead)");
+                }
+
+                // Algo styling for edges
+                // Fixed: Check treeEdges regardless of type (BFS or DFS)
+                if (step) {
+                    // 1. Tree Edges (Purple, Bold)
+                    if (step.treeEdges) {
+                        const isTreeEdge = step.treeEdges.some(te => {
+                            if (edge.directed) {
+                                return te.source === edge.source && te.target === edge.target;
+                            } else {
+                                return (te.source === edge.source && te.target === edge.target) ||
+                                       (te.source === edge.target && te.target === edge.source);
+                            }
+                        });
+                        if (isTreeEdge) {
+                            path.setAttribute("stroke", "#9333ea"); // purple-600
+                            path.setAttribute("stroke-width", "4");
+                        }
+                    }
+
+                    // 2. Back Edges (Red, Dashed)
+                    if (step.backEdges) {
+                        const isBackEdge = step.backEdges.some(be => {
+                            if (edge.directed) {
+                                return be.source === edge.source && be.target === edge.target;
+                            } else {
+                                return (be.source === edge.source && be.target === edge.target) ||
+                                       (be.source === edge.target && be.target === edge.source);
+                            }
+                        });
+                        if (isBackEdge) {
+                            path.setAttribute("stroke", "#ef4444"); // red-500
+                            path.setAttribute("stroke-width", "3");
+                            path.setAttribute("stroke-dasharray", "8,4");
+                        }
+                    }
+
+                    // 3. Forward Edges (Green, Dotted)
+                    if (step.forwardEdges) {
+                        const isFwdEdge = step.forwardEdges.some(fe => {
+                            if (edge.directed) {
+                                return fe.source === edge.source && fe.target === edge.target;
+                            }
+                            return false;
+                        });
+                        if (isFwdEdge) {
+                            path.setAttribute("stroke", "#16a34a"); // green-600
+                            path.setAttribute("stroke-width", "3");
+                            path.setAttribute("stroke-dasharray", "2,2");
+                        }
+                    }
+
+                    // 4. Cross Edges (Orange, Dotted)
+                    if (step.crossEdges) {
+                        const isCrossEdge = step.crossEdges.some(ce => {
+                            if (edge.directed) {
+                                return ce.source === edge.source && ce.target === edge.target;
+                            }
+                            return false;
+                        });
+                        if (isCrossEdge) {
+                            path.setAttribute("stroke", "#f97316"); // orange-500
+                            path.setAttribute("stroke-width", "3");
+                            path.setAttribute("stroke-dasharray", "2,2");
+                        }
+                    }
+                }
+
+                layerEdges.appendChild(path);
+            });
+
+            // 2. Draw Nodes
+            nodes.forEach(node => {
+                const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                g.setAttribute("class", "node");
+                g.setAttribute("transform", `translate(${node.x},${node.y})`);
+                g.onmousedown = (e) => handleNodeMouseDown(e, node.id);
+                g.onmouseup = (e) => handleNodeMouseUp(e, node.id);
+
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("r", "20");
+                circle.setAttribute("stroke", "#000");
+                circle.setAttribute("stroke-width", "2");
+                circle.setAttribute("fill", "#fff");
+
+                // Source Node Style
+                if (node.id === sourceNodeId && !isAlgoRunning) {
+                    circle.setAttribute("stroke", "#16a34a"); // green-600
+                    circle.setAttribute("stroke-width", "3");
+                    circle.setAttribute("fill", "#dcfce7"); // green-100
+                }
+
+                // Algo Styling
+                if (step) {
+                    if (step.activeNode === node.id) {
+                        circle.setAttribute("fill", "#facc15"); // yellow-400
+                        circle.setAttribute("stroke", "#ca8a04");
+                    } else if (step.visited.has(node.id)) {
+                        circle.setAttribute("fill", "#3b82f6"); // blue-500
+                        circle.setAttribute("stroke", "#1d4ed8");
+                    }
+                }
+
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dy", "5");
+                text.textContent = node.label;
+
+                // White text for visited nodes in algo mode
+                if (step && step.visited.has(node.id) && step.activeNode !== node.id) {
+                     text.setAttribute("fill", "white");
+                }
+
+                g.appendChild(circle);
+                g.appendChild(text);
+
+                // Draw Distance Label for BFS
+                if (step && step.type === 'BFS' && step.distances && step.distances[node.id] !== Infinity && step.distances[node.id] !== undefined) {
+                    const distText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    distText.setAttribute("text-anchor", "middle");
+                    distText.setAttribute("dy", "-25"); // Above the node
+                    distText.setAttribute("font-size", "10");
+                    distText.setAttribute("font-weight", "bold");
+                    distText.setAttribute("fill", "#9333ea"); // Purple
+                    distText.textContent = `d:${step.distances[node.id]}`;
+                    g.appendChild(distText);
+                }
+
+                layerNodes.appendChild(g);
+            });
+
+            // 3. Draw UI (Queue/Stack + Table) inside SVG
+            if (isAlgoRunning && currentStepIndex >= 0) {
+                renderInsideSVGUI();
+            }
+        }
+
+        function renderInsideSVGUI() {
+            const step = algoSteps[currentStepIndex];
+            const dataStruct = step.queueStack;
+            const type = algoSteps[0].type;
+
+            const svgHeight = svg.clientHeight || 600;
+            const svgWidth = svg.clientWidth || 800;
+
+            // --- Legend (Top Left) ---
+            const legendGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            legendGroup.id = "group-legend";
+            layerUI.appendChild(legendGroup);
+            drawLegend(type, legendGroup);
+
+            // --- Draw Queue/Stack (Bottom) ---
+            const startY = svgHeight - 60;
+            const startX = 20;
+
+            const queueGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            queueGroup.id = "group-queue";
+            layerUI.appendChild(queueGroup);
+
+            // Label
+            const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            label.setAttribute("x", startX);
+            label.setAttribute("y", startY + 25);
+            label.setAttribute("font-family", "sans-serif");
+            label.setAttribute("font-weight", "bold");
+            label.setAttribute("font-size", "14");
+            label.setAttribute("fill", "#4b5563");
+            label.textContent = `${type === 'BFS' ? 'Queue' : 'Stack'}:`;
+            queueGroup.appendChild(label);
+
+            // Boxes
+            const boxSize = 30;
+            const gap = 5;
+            let currentX = startX + 60;
+
+            if (dataStruct.length === 0) {
+                const emptyText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                emptyText.setAttribute("x", currentX);
+                emptyText.setAttribute("y", startY + 25);
+                emptyText.setAttribute("font-family", "monospace");
+                emptyText.setAttribute("fill", "#9ca3af");
+                emptyText.textContent = "(empty)";
+                queueGroup.appendChild(emptyText);
+            } else {
+                dataStruct.forEach(nodeId => {
+                    const node = nodes.find(n => n.id === nodeId);
+                    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+                    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rect.setAttribute("x", currentX);
+                    rect.setAttribute("y", startY);
+                    rect.setAttribute("width", boxSize);
+                    rect.setAttribute("height", boxSize);
+                    rect.setAttribute("rx", "4");
+                    rect.setAttribute("fill", "#fff");
+                    rect.setAttribute("stroke", "#4b5563");
+                    rect.setAttribute("stroke-width", "1");
+
+                    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    t.setAttribute("x", currentX + boxSize/2);
+                    t.setAttribute("y", startY + boxSize/2 + 5);
+                    t.setAttribute("text-anchor", "middle");
+                    t.setAttribute("font-family", "monospace");
+                    t.setAttribute("font-size", "12");
+                    t.textContent = node ? node.label : '?';
+
+                    g.appendChild(rect);
+                    g.appendChild(t);
+                    queueGroup.appendChild(g);
+                    currentX += boxSize + gap;
+                });
+            }
+
+            // --- Draw Table (Top Right) ---
+            if (type === 'BFS' && step.distances) {
+                const tableGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                tableGroup.id = "group-table";
+                layerUI.appendChild(tableGroup);
+                drawBFSTable(step, svgWidth, tableGroup);
+            }
+        }
+
+        function drawLegend(type, uiGroup) {
+            const startX = 20;
+            const startY = 20;
+            const itemHeight = 20;
+            const padding = 10;
+
+            // Define items based on Algo
+            const items = [
+                { label: "Tree Edge", color: "#9333ea", strokeWidth: 4, dash: "0" },
+            ];
+
+            if (type === 'DFS') {
+                items.push({ label: "Back Edge", color: "#ef4444", strokeWidth: 3, dash: "8,4" });
+                if (document.getElementById('is-directed').checked) {
+                    items.push({ label: "Forward Edge", color: "#16a34a", strokeWidth: 3, dash: "2,2" });
+                    items.push({ label: "Cross Edge", color: "#f97316", strokeWidth: 3, dash: "2,2" });
+                }
+            }
+
+            const boxHeight = (items.length * itemHeight) + (2 * padding);
+            const boxWidth = 130;
+
+            // Background
+            const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            bg.setAttribute("x", startX);
+            bg.setAttribute("y", startY);
+            bg.setAttribute("width", boxWidth);
+            bg.setAttribute("height", boxHeight);
+            bg.setAttribute("fill", "rgba(255,255,255,0.9)");
+            bg.setAttribute("stroke", "#e5e7eb");
+            bg.setAttribute("rx", "4");
+            uiGroup.appendChild(bg);
+
+            items.forEach((item, i) => {
+                const y = startY + padding + (i * itemHeight) + (itemHeight/2);
+
+                // Line sample
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", startX + 10);
+                line.setAttribute("y1", y);
+                line.setAttribute("x2", startX + 40);
+                line.setAttribute("y2", y);
+                line.setAttribute("stroke", item.color);
+                line.setAttribute("stroke-width", item.strokeWidth);
+                line.setAttribute("stroke-dasharray", item.dash);
+                uiGroup.appendChild(line);
+
+                // Label
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", startX + 50);
+                text.setAttribute("y", y + 4); // Vertical align
+                text.setAttribute("font-family", "sans-serif");
+                text.setAttribute("font-size", "11");
+                text.setAttribute("fill", "#374151");
+                text.textContent = item.label;
+                uiGroup.appendChild(text);
+            });
+        }
+
+        function drawBFSTable(step, svgWidth, uiGroup) {
+            const tableWidth = 140;
+            const startX = svgWidth - tableWidth - 20;
+            const startY = 20;
+            const rowHeight = 20;
+
+            // Background
+            const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            bg.setAttribute("x", startX);
+            bg.setAttribute("y", startY);
+            bg.setAttribute("width", tableWidth);
+            bg.setAttribute("height", (nodes.length + 1) * rowHeight + 10);
+            bg.setAttribute("fill", "rgba(255,255,255,0.9)");
+            bg.setAttribute("stroke", "#e5e7eb");
+            bg.setAttribute("rx", "4");
+            uiGroup.appendChild(bg);
+
+            // Headers
+            const headers = ["Node", "Parent", "Dist"];
+            const colX = [startX + 10, startX + 60, startX + 110];
+
+            headers.forEach((h, i) => {
+                const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                t.setAttribute("x", colX[i]);
+                t.setAttribute("y", startY + 15);
+                t.setAttribute("font-family", "sans-serif");
+                t.setAttribute("font-size", "11");
+                t.setAttribute("font-weight", "bold");
+                t.setAttribute("fill", "#374151");
+                t.textContent = h;
+                uiGroup.appendChild(t);
+            });
+
+            // Rows
+            // Sort nodes by label for consistent table
+            const sortedNodes = [...nodes].sort((a,b) => a.label.localeCompare(b.label, undefined, {numeric: true}));
+
+            sortedNodes.forEach((node, i) => {
+                const y = startY + 15 + (i + 1) * rowHeight;
+
+                // Node Label
+                const tNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                tNode.setAttribute("x", colX[0]);
+                tNode.setAttribute("y", y);
+                tNode.setAttribute("font-family", "monospace");
+                tNode.setAttribute("font-size", "11");
+                tNode.textContent = node.label;
+                uiGroup.appendChild(tNode);
+
+                // Parent
+                const parentId = step.parents[node.id];
+                const parentLabel = parentId !== null && parentId !== undefined ? nodes.find(n => n.id === parentId)?.label : "-";
+                const tParent = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                tParent.setAttribute("x", colX[1]);
+                tParent.setAttribute("y", y);
+                tParent.setAttribute("font-family", "monospace");
+                tParent.setAttribute("font-size", "11");
+                tParent.textContent = parentLabel;
+                uiGroup.appendChild(tParent);
+
+                // Dist
+                const d = step.distances[node.id];
+                const distLabel = d === Infinity ? "∞" : d;
+                const tDist = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                tDist.setAttribute("x", colX[2]);
+                tDist.setAttribute("y", y);
+                tDist.setAttribute("font-family", "monospace");
+                tDist.setAttribute("font-size", "11");
+                tDist.textContent = distLabel;
+                uiGroup.appendChild(tDist);
+            });
+        }
+
+        // --- Algorithms ---
+
+        function buildAdjacencyList() {
+            const adj = {};
+            nodes.forEach(n => adj[n.id] = []);
+            edges.forEach(e => {
+                adj[e.source].push(e.target);
+                if (!e.directed) {
+                    adj[e.target].push(e.source); // Undirected adds back-link
+                }
+            });
+            // Sort neighbors for deterministic behavior (alphabetical/ID order)
+            for (let id in adj) {
+                adj[id].sort((a,b) => a - b);
+            }
+            return adj;
+        }
+
+        function runAlgo(type) {
+            if (sourceNodeId === null) {
+                showToast("Please select a source node first.");
+                return;
+            }
+
+            const adj = buildAdjacencyList();
+            algoSteps = [];
+
+            // Initial Step
+            // Note: queueStack stores IDs
+            let queueStack = [sourceNodeId];
+            let visited = new Set();
+
+            if (type === 'BFS') {
+                visited.add(sourceNodeId);
+                runBFS(adj, queueStack, visited);
+            } else {
+                runDFS(adj, queueStack, visited);
+            }
+
+            // Start Playback
+            isAlgoRunning = true;
+            currentStepIndex = 0;
+            document.getElementById('algo-title').textContent = type;
+            playbackControls.classList.remove('hidden');
+            render();
+            updateStepCounter();
+        }
+
+        function runBFS(adj, queue, visited) {
+            const distances = {};
+            const parents = {};
+            const treeEdges = []; // Store pairs of {source, target}
+
+            // Init
+            nodes.forEach(n => {
+                distances[n.id] = Infinity;
+                parents[n.id] = null;
+            });
+            distances[sourceNodeId] = 0;
+
+            // Capture initial state
+            algoSteps.push({
+                type: 'BFS',
+                activeNode: null,
+                visited: new Set(visited),
+                queueStack: [...queue],
+                distances: {...distances},
+                parents: {...parents},
+                treeEdges: [...treeEdges],
+                description: `Initialize BFS.`
+            });
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                // Step: Dequeue/Visit
+                algoSteps.push({
+                    type: 'BFS',
+                    activeNode: current,
+                    visited: new Set(visited),
+                    queueStack: [...queue],
+                    distances: {...distances},
+                    parents: {...parents},
+                    treeEdges: [...treeEdges],
+                    description: `Visiting node.`
+                });
+
+                const neighbors = adj[current] || [];
+                for (let neighbor of neighbors) {
+                    if (!visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        queue.push(neighbor);
+
+                        // Update Path Info
+                        distances[neighbor] = distances[current] + 1;
+                        parents[neighbor] = current;
+                        treeEdges.push({ source: current, target: neighbor });
+
+                        algoSteps.push({
+                            type: 'BFS',
+                            activeNode: current,
+                            visited: new Set(visited),
+                            queueStack: [...queue],
+                            distances: {...distances},
+                            parents: {...parents},
+                            treeEdges: [...treeEdges],
+                            description: `Adding neighbor to queue.`
+                        });
+                    }
+                }
+            }
+
+            // Final Step to show complete tree clearly without active node highlighting
+            algoSteps.push({
+                type: 'BFS',
+                activeNode: null,
+                visited: new Set(visited),
+                queueStack: [],
+                distances: {...distances},
+                parents: {...parents},
+                treeEdges: [...treeEdges],
+                description: `BFS Complete. Shortest Path Tree.`
+            });
+        }
+
+        function runDFS(adj, stack, visited) {
+            // Re-implementing with explicit stack simulation to handle Back/Cross edges correctly
+            // Stack items: { u: nodeId, p: parentId, stage: 'enter'|'exit' }
+
+            let time = 0;
+            const discovery = {};
+            const recursionStack = new Set(); // To track ancestors for Back Edges
+            const treeEdges = [];
+            const backEdges = [];
+            const forwardEdges = [];
+            const crossEdges = [];
+
+            // Local visited state for this specific run
+            const localVisited = new Set();
+            const processingStack = stack.map(id => ({ u: id, p: null, stage: 'enter' }));
+
+            // Initial State
+            algoSteps.push({
+                type: 'DFS',
+                activeNode: null,
+                visited: new Set(),
+                queueStack: stack,
+                treeEdges: [],
+                backEdges: [],
+                forwardEdges: [],
+                crossEdges: [],
+                description: `Initialize Stack.`
+            });
+
+            const isDirectedGraph = document.getElementById('is-directed').checked;
+
+            while (processingStack.length > 0) {
+                const item = processingStack.pop();
+                const u = item.u;
+
+                if (item.stage === 'exit') {
+                    recursionStack.delete(u);
+                    continue;
+                }
+
+                // If u is already visited, the edge p -> u was added to stack but u was visited
+                // via another path before we popped this. This is a Forward or Cross edge.
+                if (localVisited.has(u)) {
+                    if (item.p !== null) {
+                        const v = u;
+                        const parent = item.p;
+
+                        // Fix: If undirected edge to parent, ignore (it's the tree edge being traversed back)
+                        if (!isDirectedGraph) {
+                            // Since we are popping (p -> u), if u is visited and u is parent's parent? No.
+                            // In undirected, if u is already visited, and u != parent's parent (which is not available in item.p usually)
+                            // But here, we just check if it's the reverse of the tree edge.
+                            // Actually, if it's already visited, we just check edge type logic.
+                            // The real duplicate check is done in the neighbor loop usually.
+                            // But for "Lazy" popping, we might see it again.
+                            // In undirected, edge (u, v) is same as (v, u).
+                            // If v is visited, and v is NOT the parent of u in the DFS tree...
+                            // But we don't have full tree structure easily.
+
+                            // Heuristic: Check if this exact edge (parent, v) was already recorded as Back Edge.
+                            const exists = backEdges.some(e =>
+                                (e.source === parent && e.target === v) || (e.source === v && e.target === parent)
+                            );
+                            if (exists) continue; // Already handled
+                        }
+
+                        let isBack = false;
+                        let isForward = false;
+                        let isCross = false;
+
+                        if (!isDirectedGraph) {
+                             // Undirected: If v is visited and not parent, it's a Back Edge.
+                             const exists = backEdges.some(e =>
+                                (e.source === parent && e.target === v) || (e.source === v && e.target === parent)
+                            );
+                            if (!exists) isBack = true;
+                        } else {
+                            // Directed
+                            if (recursionStack.has(v)) {
+                                isBack = true;
+                            } else if (discovery[v] > discovery[parent]) {
+                                isForward = true;
+                            } else {
+                                isCross = true;
+                            }
+                        }
+
+                        if (isBack) backEdges.push({ source: parent, target: v });
+                        else if (isForward) forwardEdges.push({ source: parent, target: v });
+                        else if (isCross) crossEdges.push({ source: parent, target: v });
+
+                        // Add step for this edge discovery
+                        algoSteps.push({
+                            type: 'DFS',
+                            activeNode: parent, // Show parent as active source of this edge
+                            visited: new Set(localVisited),
+                            queueStack: processingStack.filter(i => i.stage === 'enter').map(i => i.u),
+                            treeEdges: [...treeEdges],
+                            backEdges: [...backEdges],
+                            forwardEdges: [...forwardEdges],
+                            crossEdges: [...crossEdges],
+                            description: `Checked edge ${nodes.find(n=>n.id===parent).label} -> ${nodes.find(n=>n.id===v).label} (Visited).`
+                        });
+                    }
+                    continue;
+                }
+
+                // Stage 'enter' (Unvisited)
+                if (!localVisited.has(u)) {
+                    localVisited.add(u);
+                    recursionStack.add(u);
+                    discovery[u] = ++time;
+
+                    // Add 'exit' marker to handle recursion stack cleanup
+                    processingStack.push({ u, stage: 'exit' });
+
+                    // Record Tree Edge
+                    if (item.p !== null) {
+                        treeEdges.push({ source: item.p, target: u });
+                    }
+
+                    const neighbors = adj[u] || [];
+
+                    // Iterate reverse to push in order
+                    for (let i = neighbors.length - 1; i >= 0; i--) {
+                        const v = neighbors[i];
+
+                        if (!localVisited.has(v)) {
+                            // Tree Edge Candidate - Push to stack
+                            processingStack.push({ u: v, p: u, stage: 'enter' });
+                        } else {
+                            // Visited - Determine Edge Type EAGERLY
+
+                            // Fix: If undirected edge to parent, ignore (it's the tree edge being traversed back)
+                            if (v === item.p) {
+                                const edgeObj = edges.find(e =>
+                                    (e.source === u && e.target === v) || (e.source === v && e.target === u)
+                                );
+                                if (edgeObj && !edgeObj.directed) continue;
+                            }
+
+                            let isBack = false;
+                            let isForward = false;
+                            let isCross = false;
+
+                            if (!isDirectedGraph) {
+                                if (v !== item.p) {
+                                    const exists = backEdges.some(e =>
+                                        (e.source === u && e.target === v) || (e.source === v && e.target === u)
+                                    );
+                                    if (!exists) isBack = true;
+                                }
+                            } else {
+                                // Directed
+                                if (recursionStack.has(v)) {
+                                    isBack = true;
+                                } else if (discovery[v] > discovery[u]) {
+                                    isForward = true;
+                                } else {
+                                    isCross = true;
+                                }
+                            }
+
+                            if (isBack) backEdges.push({ source: u, target: v });
+                            else if (isForward) forwardEdges.push({ source: u, target: v });
+                            else if (isCross) crossEdges.push({ source: u, target: v });
+                        }
+                    }
+
+                    // Visualization Step
+                    algoSteps.push({
+                        type: 'DFS',
+                        activeNode: u,
+                        visited: new Set(localVisited),
+                        queueStack: processingStack.filter(i => i.stage === 'enter').map(i => i.u),
+                        treeEdges: [...treeEdges],
+                        backEdges: [...backEdges],
+                        forwardEdges: [...forwardEdges],
+                        crossEdges: [...crossEdges],
+                        description: `Visited ${nodes.find(n=>n.id===u).label}. Processing edges.`
+                    });
+                }
+            }
+        }
+
+        // --- Playback Controls ---
+
+        function step(delta) {
+            if (!isAlgoRunning) return;
+            const newIndex = currentStepIndex + delta;
+            if (newIndex >= 0 && newIndex < algoSteps.length) {
+                currentStepIndex = newIndex;
+                render();
+                updateStepCounter();
+            }
+        }
+
+        function updateStepCounter() {
+            document.getElementById('step-counter').textContent = `Step ${currentStepIndex + 1} / ${algoSteps.length}`;
+        }
+
+        function exitAlgoMode() {
+            isAlgoRunning = false;
+            currentStepIndex = -1;
+            algoSteps = [];
+            playbackControls.classList.add('hidden');
+            render();
+        }
+
+        // --- Export / Import JSON ---
+
+        function exportGraphData() {
+            const data = {
+                nodes: nodes,
+                edges: edges,
+                nextNodeId: nextNodeId,
+                isDirected: document.getElementById('is-directed').checked,
+                version: 1
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'graph_data.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function triggerImport() {
+            document.getElementById('file-input').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    // Basic Schema Validation
+                    if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+                        throw new Error("Invalid format: Missing nodes or edges array.");
+                    }
+
+                    // Validate Node Structure
+                    if (data.nodes.some(n => typeof n.id !== 'number' || typeof n.x !== 'number' || typeof n.y !== 'number')) {
+                        throw new Error("Invalid format: Corrupt node data.");
+                    }
+
+                    // Reset Algo Mode if active
+                    exitAlgoMode();
+
+                    // Restore State
+                    nodes = data.nodes;
+                    edges = data.edges;
+
+                    // Restore ID counter
+                    if (typeof data.nextNodeId === 'number') {
+                        nextNodeId = data.nextNodeId;
+                    } else {
+                        nextNodeId = nodes.length > 0 ? Math.max(...nodes.map(n => n.id)) + 1 : 0;
+                    }
+
+                    // Restore Settings
+                    if (data.isDirected !== undefined) {
+                        document.getElementById('is-directed').checked = data.isDirected;
+                    }
+
+                    // Reset Source Selection
+                    sourceNodeId = null;
+                    sourceDisplay.textContent = 'None';
+                    sourceDisplay.classList.remove('bg-green-100', 'text-green-700');
+                    sourceDisplay.classList.add('bg-blue-100', 'text-blue-600');
+
+                    render();
+                    showToast("Graph imported successfully.");
+
+                } catch (err) {
+                    console.error(err);
+                    showToast("Import failed: " + err.message);
+                }
+
+                // Clear input to allow re-selecting same file
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Export SVG ---
+
+        function exportSVG() {
+            // 1. Get Bounding Boxes of content
+            const padding = 20;
+
+            // Graph BBox
+            const nodesBox = layerNodes.getBBox();
+            const edgesBox = layerEdges.getBBox();
+
+            // Handle empty graph
+            if (nodes.length === 0) {
+                showToast("Graph is empty, nothing to export.");
+                return;
+            }
+
+            // Combine Node/Edge boxes
+            let minX, minY, maxX, maxY;
+
+            if (edges.length > 0) {
+                minX = Math.min(nodesBox.x, edgesBox.x);
+                minY = Math.min(nodesBox.y, edgesBox.y);
+                maxX = Math.max(nodesBox.x + nodesBox.width, edgesBox.x + edgesBox.width);
+                maxY = Math.max(nodesBox.y + nodesBox.height, edgesBox.y + edgesBox.height);
+            } else {
+                minX = nodesBox.x;
+                minY = nodesBox.y;
+                maxX = nodesBox.x + nodesBox.width;
+                maxY = nodesBox.y + nodesBox.height;
+            }
+
+            const graphW = maxX - minX;
+            const graphH = maxY - minY;
+
+            // UI BBoxes
+            const queueGroup = document.getElementById('group-queue');
+            const tableGroup = document.getElementById('group-table');
+            const legendGroup = document.getElementById('group-legend');
+
+            const queueBox = queueGroup ? queueGroup.getBBox() : { x:0, y:0, width:0, height:0 };
+            const tableBox = tableGroup ? tableGroup.getBBox() : { x:0, y:0, width:0, height:0 };
+            const legendBox = legendGroup ? legendGroup.getBBox() : { x:0, y:0, width:0, height:0 };
+
+            // 2. Clone SVG
+            const clone = svg.cloneNode(true);
+
+            // 3. Calculate Layout Shifts
+            const hasTable = tableBox.width > 0;
+            const hasQueue = queueBox.width > 0;
+            const hasLegend = legendBox.width > 0;
+
+            // Calculate horizontal offset for graph based on Legend
+            const legendWidth = hasLegend ? legendBox.width + padding : 0;
+            const graphStartX = padding + legendWidth;
+
+            // Graph Shift: Move [minX, minY] -> [graphStartX, padding]
+            const graphShiftX = graphStartX - minX;
+            const graphShiftY = padding - minY;
+
+            // Legend Shift: Move to [padding, padding]
+            const legendShiftX = hasLegend ? padding - legendBox.x : 0;
+            const legendShiftY = hasLegend ? padding - legendBox.y : 0;
+
+            // Table Shift: Move to [graphStartX + graphW + padding, padding]
+            const tableStartX = graphStartX + graphW + padding;
+            const tableShiftX = hasTable ? tableStartX - tableBox.x : 0;
+            const tableShiftY = hasTable ? padding - tableBox.y : 0;
+
+            // Calculate height of the top row (Graph + Side Panels)
+            const topSectionHeight = Math.max(
+                graphH,
+                hasTable ? tableBox.height : 0,
+                hasLegend ? legendBox.height : 0
+            );
+
+            // Queue Shift: Move to [padding, padding + topHeight + padding]
+            const queueStartY = padding + topSectionHeight + padding;
+            const queueShiftX = hasQueue ? padding - queueBox.x : 0;
+            const queueShiftY = hasQueue ? queueStartY - queueBox.y : 0;
+
+            // 4. Apply Transforms to Clone
+            const cloneNodes = clone.getElementById('layer-nodes');
+            const cloneEdges = clone.getElementById('layer-edges');
+            const cloneQueue = clone.getElementById('group-queue');
+            const cloneTable = clone.getElementById('group-table');
+            const cloneLegend = clone.getElementById('group-legend');
+
+            cloneNodes.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
+            cloneEdges.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
+
+            if (cloneTable) cloneTable.setAttribute("transform", `translate(${tableShiftX}, ${tableShiftY})`);
+            if (cloneQueue) cloneQueue.setAttribute("transform", `translate(${queueShiftX}, ${queueShiftY})`);
+            if (cloneLegend) cloneLegend.setAttribute("transform", `translate(${legendShiftX}, ${legendShiftY})`);
+
+            // 5. Resize ViewBox
+            const totalW = Math.max(
+                tableStartX + (hasTable ? tableBox.width : 0) + padding, // Top row width
+                (hasQueue ? queueBox.width : 0) + 2 * padding            // Bottom row width
+            );
+
+            const totalH = queueStartY + (hasQueue ? queueBox.height : 0) + padding;
+
+            clone.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
+            clone.setAttribute("width", totalW);
+            clone.setAttribute("height", totalH);
+
+            // 6. Serialize and Download
+            const serializer = new XMLSerializer();
+            let source = serializer.serializeToString(clone);
+
+            if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+                source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+
+            const fileContent = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+            const blob = new Blob([fileContent], {type: "image/svg+xml;charset=utf-8"});
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = url;
+            const stepNum = isAlgoRunning ? `_step${currentStepIndex+1}` : '';
+            link.download = `graph_viz${stepNum}.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('opacity-0', 'translate-y-2');
+            setTimeout(() => {
+                t.classList.add('opacity-0', 'translate-y-2');
+            }, 3000);
+        }
+
+        // Initial render
+        render();
+
+    </script>
+</body>
+</html>
