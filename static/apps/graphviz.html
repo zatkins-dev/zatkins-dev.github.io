@@ -36,10 +36,17 @@
             cursor: pointer;
         }
 
+        .edge-edit-hover:hover {
+            stroke: #3b82f6 !important; /* blue-500 */
+            stroke-width: 4px !important;
+            cursor: pointer;
+        }
+
         /* Mode-specific cursors */
         .mode-move { cursor: move; }
         .mode-edge { cursor: alias; }
         .mode-source { cursor: pointer; }
+        .mode-edit { cursor: context-menu; }
 
         /* UI Panel */
         .panel {
@@ -60,13 +67,20 @@
                 <button onclick="setMode('node')" id="btn-node" class="px-3 py-1.5 rounded-md text-sm font-medium bg-white shadow-sm text-gray-800 transition-colors">Add Nodes</button>
                 <button onclick="setMode('edge')" id="btn-edge" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors">Add Edges</button>
                 <button onclick="setMode('move')" id="btn-move" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors">Move</button>
+                <button onclick="setMode('edit')" id="btn-edit" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors" title="Edit Properties (Weights)">Edit</button>
                 <button onclick="setMode('delete')" id="btn-delete" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors text-red-600">Delete</button>
             </div>
 
-            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                <input type="checkbox" id="is-directed" class="rounded text-blue-600 focus:ring-blue-500">
-                <span>Directed Edges</span>
-            </label>
+            <div class="flex flex-col gap-1">
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                    <input type="checkbox" id="is-directed" class="rounded text-blue-600 focus:ring-blue-500">
+                    <span>Directed</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                    <input type="checkbox" id="is-weighted" class="rounded text-blue-600 focus:ring-blue-500" onchange="render()">
+                    <span>Weighted</span>
+                </label>
+            </div>
 
             <!-- Graph Actions -->
             <div class="flex items-center gap-2 border-l border-gray-300 pl-4">
@@ -88,8 +102,9 @@
             </div>
 
             <div class="flex gap-2">
-                <button onclick="runAlgo('BFS')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">Run BFS</button>
-                <button onclick="runAlgo('DFS')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">Run DFS</button>
+                <button onclick="runAlgo('BFS')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">Run BFS</button>
+                <button onclick="runAlgo('DFS')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">Run DFS</button>
+                <button onclick="runAlgo('Dijkstra')" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm font-medium shadow-sm transition-colors">Run Dijkstra</button>
             </div>
         </div>
     </div>
@@ -112,6 +127,7 @@
 
                 <!-- Groups ensure proper layering -->
                 <g id="layer-edges"></g>
+                <g id="layer-weights"></g> <!-- New layer for weights -->
                 <g id="layer-nodes"></g>
                 <!-- UI Layer inside SVG for export -->
                 <g id="layer-ui"></g>
@@ -145,12 +161,6 @@
         </div>
     </div>
 
-    <div class="fixed bottom-10 right-10">
-      <button onclick="location.href='/index.html'" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="80%" height="80%" viewBox="0 0 24 24"><path fill="currentColor" d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1"/></svg>
-      </button>
-    </div>
-
     <!-- Alert / Toast -->
     <div id="toast" class="fixed top-20 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg opacity-0 transition-opacity pointer-events-none transform translate-y-2">
         Message
@@ -161,14 +171,12 @@
         let nodes = [];
         let edges = [];
         let nextNodeId = 0;
-        let mode = 'node'; // node, edge, source, move, delete
-        let isDirected = false;
+        let mode = 'node'; // node, edge, source, move, delete, edit
         let sourceNodeId = null;
 
         // Interaction State
         let dragSourceNode = null;
         let dragNodeId = null;
-        let tempEdgeLine = null;
 
         // Algo State
         let algoSteps = [];
@@ -179,18 +187,19 @@
         const svg = document.getElementById('main-svg');
         const layerNodes = document.getElementById('layer-nodes');
         const layerEdges = document.getElementById('layer-edges');
+        const layerWeights = document.getElementById('layer-weights');
         const layerUI = document.getElementById('layer-ui');
         const playbackControls = document.getElementById('playback-controls');
         const btnNode = document.getElementById('btn-node');
         const btnEdge = document.getElementById('btn-edge');
         const btnMove = document.getElementById('btn-move');
+        const btnEdit = document.getElementById('btn-edit');
         const btnDelete = document.getElementById('btn-delete');
         const btnSource = document.getElementById('btn-source');
         const sourceDisplay = document.getElementById('source-display');
 
         // --- Initialization ---
 
-        // Handle resizing for SVG
         function resizeSVG() {
             const container = document.getElementById('canvas-container');
             svg.setAttribute('viewBox', `0 0 ${container.clientWidth} ${container.clientHeight}`);
@@ -203,7 +212,7 @@
         function setMode(newMode) {
             mode = newMode;
             // Reset UI buttons
-            [btnNode, btnEdge, btnSource, btnMove, btnDelete].forEach(b => {
+            [btnNode, btnEdge, btnSource, btnMove, btnEdit, btnDelete].forEach(b => {
                 b.classList.remove('bg-white', 'shadow-sm', 'text-gray-800');
                 b.classList.add('text-gray-600', 'hover:bg-gray-300');
             });
@@ -213,16 +222,24 @@
             if (newMode === 'node') activeBtn = btnNode;
             else if (newMode === 'edge') activeBtn = btnEdge;
             else if (newMode === 'move') activeBtn = btnMove;
+            else if (newMode === 'edit') activeBtn = btnEdit;
             else if (newMode === 'delete') activeBtn = btnDelete;
             else activeBtn = btnSource;
 
             activeBtn.classList.remove('text-gray-600', 'hover:bg-gray-300');
             activeBtn.classList.add('bg-white', 'shadow-sm', 'text-gray-800');
 
-            // Reset temp edge if switching modes
             dragSourceNode = null;
             dragNodeId = null;
             render();
+        }
+
+        function isDirectedCheck() {
+            return document.getElementById('is-directed').checked;
+        }
+
+        function isWeightedCheck() {
+            return document.getElementById('is-weighted').checked;
         }
 
         svg.addEventListener('click', (e) => {
@@ -324,12 +341,34 @@
                         edges.push({
                             source: dragSourceNode,
                             target: targetNodeId,
-                            directed: isDirectedCheck()
+                            directed: isDirectedCheck(),
+                            weight: 1 // Default weight
                         });
                     }
                 }
                 dragSourceNode = null;
                 render();
+            }
+        }
+
+        function editEdge(index) {
+            if (!isWeightedCheck()) {
+                showToast("Enable 'Weighted' mode to edit weights.");
+                return;
+            }
+
+            const edge = edges[index];
+            const currentWeight = edge.weight !== undefined ? edge.weight : 1;
+
+            const newWeightStr = prompt("Enter edge weight:", currentWeight);
+            if (newWeightStr !== null) {
+                const w = parseInt(newWeightStr, 10);
+                if (!isNaN(w)) {
+                    edge.weight = w;
+                    render();
+                } else {
+                    showToast("Invalid number entered.");
+                }
             }
         }
 
@@ -382,25 +421,26 @@
             }
         });
 
-        function isDirectedCheck() {
-            return document.getElementById('is-directed').checked;
-        }
-
         // --- Rendering ---
 
         function render() {
             // Clear layers
             layerNodes.innerHTML = '';
             layerEdges.innerHTML = '';
-            layerUI.innerHTML = ''; // Only clear UI if not in algo mode or handled separately
+            layerWeights.innerHTML = '';
+            layerUI.innerHTML = '';
 
             const step = (isAlgoRunning && currentStepIndex >= 0) ? algoSteps[currentStepIndex] : null;
+            const showWeights = isWeightedCheck();
 
             // 1. Draw Edges
             edges.forEach((edge, index) => {
                 const s = nodes.find(n => n.id === edge.source);
                 const t = nodes.find(n => n.id === edge.target);
                 if (!s || !t) return;
+
+                // Ensure weight exists if undefined
+                if (edge.weight === undefined) edge.weight = 1;
 
                 const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
@@ -423,14 +463,22 @@
                 path.setAttribute("stroke-width", "2");
                 path.setAttribute("fill", "none");
 
-                // Enable hover effect for deletion
-                if (mode === 'delete' && !isAlgoRunning) {
-                    path.setAttribute("class", "edge-hover");
-                    path.onclick = (e) => {
-                        e.stopPropagation();
-                        edges.splice(index, 1);
-                        render();
-                    };
+                // Interactivity based on mode
+                if (!isAlgoRunning) {
+                    if (mode === 'delete') {
+                        path.setAttribute("class", "edge-hover");
+                        path.onclick = (e) => {
+                            e.stopPropagation();
+                            edges.splice(index, 1);
+                            render();
+                        };
+                    } else if (mode === 'edit' && showWeights) {
+                        path.setAttribute("class", "edge-edit-hover");
+                        path.onclick = (e) => {
+                            e.stopPropagation();
+                            editEdge(index);
+                        };
+                    }
                 }
 
                 if (edge.directed) {
@@ -438,7 +486,6 @@
                 }
 
                 // Algo styling for edges
-                // Fixed: Check treeEdges regardless of type (BFS or DFS)
                 if (step) {
                     // 1. Tree Edges (Purple, Bold)
                     if (step.treeEdges) {
@@ -505,6 +552,51 @@
                 }
 
                 layerEdges.appendChild(path);
+
+                // Render Weights
+                if (showWeights) {
+                    const midX = (s.x + t.x) / 2;
+                    const midY = (s.y + t.y) / 2;
+
+                    // Group for weight
+                    const wGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    if (!isAlgoRunning && mode === 'edit') {
+                        wGroup.style.cursor = 'pointer';
+                        wGroup.onclick = (e) => {
+                            e.stopPropagation();
+                            editEdge(index);
+                        }
+                    }
+
+                    // Background Box
+                    const textContent = String(edge.weight);
+                    const boxWidth = 10 + (textContent.length * 7);
+                    const boxHeight = 16;
+
+                    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rect.setAttribute("x", midX - boxWidth/2);
+                    rect.setAttribute("y", midY - boxHeight/2);
+                    rect.setAttribute("width", boxWidth);
+                    rect.setAttribute("height", boxHeight);
+                    rect.setAttribute("rx", "3");
+                    rect.setAttribute("fill", "#ffffff");
+                    rect.setAttribute("stroke", "#9ca3af");
+                    rect.setAttribute("stroke-width", "1");
+
+                    // Text
+                    const wText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    wText.setAttribute("x", midX);
+                    wText.setAttribute("y", midY + 4);
+                    wText.setAttribute("text-anchor", "middle");
+                    wText.setAttribute("font-size", "11");
+                    wText.setAttribute("font-family", "monospace");
+                    wText.setAttribute("fill", "#374151");
+                    wText.textContent = textContent;
+
+                    wGroup.appendChild(rect);
+                    wGroup.appendChild(wText);
+                    layerWeights.appendChild(wGroup);
+                }
             });
 
             // 2. Draw Nodes
@@ -552,8 +644,8 @@
                 g.appendChild(circle);
                 g.appendChild(text);
 
-                // Draw Distance Label for BFS
-                if (step && step.type === 'BFS' && step.distances && step.distances[node.id] !== Infinity && step.distances[node.id] !== undefined) {
+                // Draw Distance Label for BFS/Dijkstra
+                if (step && (step.type === 'BFS' || step.type === 'Dijkstra') && step.distances && step.distances[node.id] !== Infinity && step.distances[node.id] !== undefined) {
                     const distText = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     distText.setAttribute("text-anchor", "middle");
                     distText.setAttribute("dy", "-25"); // Above the node
@@ -603,13 +695,16 @@
             label.setAttribute("font-weight", "bold");
             label.setAttribute("font-size", "14");
             label.setAttribute("fill", "#4b5563");
-            label.textContent = `${type === 'BFS' ? 'Queue' : 'Stack'}:`;
+
+            if (type === 'BFS') label.textContent = 'Queue:';
+            else if (type === 'DFS') label.textContent = 'Stack:';
+            else if (type === 'Dijkstra') label.textContent = 'Priority Queue:';
+
             queueGroup.appendChild(label);
 
             // Boxes
-            const boxSize = 30;
             const gap = 5;
-            let currentX = startX + 60;
+            let currentX = startX + (type === 'Dijkstra' ? 120 : 60);
 
             if (dataStruct.length === 0) {
                 const emptyText = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -620,41 +715,49 @@
                 emptyText.textContent = "(empty)";
                 queueGroup.appendChild(emptyText);
             } else {
-                dataStruct.forEach(nodeId => {
+                dataStruct.forEach(item => {
+                    const isObj = (typeof item === 'object');
+                    const nodeId = isObj ? item.id : item;
                     const node = nodes.find(n => n.id === nodeId);
+
                     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+                    // Dijkstra items are wider: "A:5"
+                    const textStr = node ? (isObj ? `${node.label}:${item.dist}` : node.label) : '?';
+                    const boxWidth = isObj ? 14 + (textStr.length * 8) : 30;
+                    const boxHeight = 30;
 
                     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                     rect.setAttribute("x", currentX);
                     rect.setAttribute("y", startY);
-                    rect.setAttribute("width", boxSize);
-                    rect.setAttribute("height", boxSize);
+                    rect.setAttribute("width", boxWidth);
+                    rect.setAttribute("height", boxHeight);
                     rect.setAttribute("rx", "4");
                     rect.setAttribute("fill", "#fff");
                     rect.setAttribute("stroke", "#4b5563");
                     rect.setAttribute("stroke-width", "1");
 
                     const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    t.setAttribute("x", currentX + boxSize/2);
-                    t.setAttribute("y", startY + boxSize/2 + 5);
+                    t.setAttribute("x", currentX + boxWidth/2);
+                    t.setAttribute("y", startY + boxHeight/2 + 5);
                     t.setAttribute("text-anchor", "middle");
                     t.setAttribute("font-family", "monospace");
                     t.setAttribute("font-size", "12");
-                    t.textContent = node ? node.label : '?';
+                    t.textContent = textStr;
 
                     g.appendChild(rect);
                     g.appendChild(t);
                     queueGroup.appendChild(g);
-                    currentX += boxSize + gap;
+                    currentX += boxWidth + gap;
                 });
             }
 
             // --- Draw Table (Top Right) ---
-            if (type === 'BFS' && step.distances) {
+            if ((type === 'BFS' || type === 'Dijkstra') && step.distances) {
                 const tableGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
                 tableGroup.id = "group-table";
                 layerUI.appendChild(tableGroup);
-                drawBFSTable(step, svgWidth, tableGroup);
+                drawDistParentTable(step, svgWidth, tableGroup);
             }
         }
 
@@ -717,7 +820,7 @@
             });
         }
 
-        function drawBFSTable(step, svgWidth, uiGroup) {
+        function drawDistParentTable(step, svgWidth, uiGroup) {
             const tableWidth = 140;
             const startX = svgWidth - tableWidth - 20;
             const startY = 20;
@@ -757,12 +860,19 @@
             sortedNodes.forEach((node, i) => {
                 const y = startY + 15 + (i + 1) * rowHeight;
 
+                // Highlight changed row for Dijkstra
+                const isChanged = step.changes && step.changes[node.id];
+                const fontWeight = isChanged ? "bold" : "normal";
+                const textColor = isChanged ? "#dc2626" : "#000000"; // Red if changed
+
                 // Node Label
                 const tNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 tNode.setAttribute("x", colX[0]);
                 tNode.setAttribute("y", y);
                 tNode.setAttribute("font-family", "monospace");
                 tNode.setAttribute("font-size", "11");
+                tNode.setAttribute("font-weight", fontWeight);
+                tNode.setAttribute("fill", textColor);
                 tNode.textContent = node.label;
                 uiGroup.appendChild(tNode);
 
@@ -774,6 +884,8 @@
                 tParent.setAttribute("y", y);
                 tParent.setAttribute("font-family", "monospace");
                 tParent.setAttribute("font-size", "11");
+                tParent.setAttribute("font-weight", fontWeight);
+                tParent.setAttribute("fill", textColor);
                 tParent.textContent = parentLabel;
                 uiGroup.appendChild(tParent);
 
@@ -785,6 +897,8 @@
                 tDist.setAttribute("y", y);
                 tDist.setAttribute("font-family", "monospace");
                 tDist.setAttribute("font-size", "11");
+                tDist.setAttribute("font-weight", fontWeight);
+                tDist.setAttribute("fill", textColor);
                 tDist.textContent = distLabel;
                 uiGroup.appendChild(tDist);
             });
@@ -825,8 +939,10 @@
             if (type === 'BFS') {
                 visited.add(sourceNodeId);
                 runBFS(adj, queueStack, visited);
-            } else {
+            } else if (type === 'DFS') {
                 runDFS(adj, queueStack, visited);
+            } else if (type === 'Dijkstra') {
+                runDijkstra(adj);
             }
 
             // Start Playback
@@ -915,6 +1031,129 @@
             });
         }
 
+        function getTreeEdgesFromParents(parents) {
+            const edgesList = [];
+            for (let childId in parents) {
+                const pId = parents[childId];
+                if (pId !== null) {
+                    edgesList.push({ source: parseInt(pId), target: parseInt(childId) });
+                }
+            }
+            return edgesList;
+        }
+
+        function runDijkstra(adj) {
+            const distances = {};
+            const parents = {};
+            const pq = []; // Array of { id, dist }
+            const visited = new Set(); // To mark finalized nodes
+
+            // Init
+            nodes.forEach(n => {
+                distances[n.id] = Infinity;
+                parents[n.id] = null;
+            });
+            distances[sourceNodeId] = 0;
+
+            pq.push({ id: sourceNodeId, dist: 0 });
+
+            // Initial Step
+            algoSteps.push({
+                type: 'Dijkstra',
+                activeNode: null,
+                visited: new Set(),
+                queueStack: [...pq], // copy
+                distances: {...distances},
+                parents: {...parents},
+                treeEdges: [],
+                changes: {}, // Track what changed for bolding
+                description: `Initialize Dijkstra.`
+            });
+
+            while (pq.length > 0) {
+                // Sort by dist asc (simulating Min PQ)
+                pq.sort((a, b) => a.dist - b.dist);
+                const { id: u, dist: d } = pq.shift();
+
+                // If we found a shorter path to u before, skip this stale entry
+                if (visited.has(u)) continue;
+
+                visited.add(u);
+
+                // Step: Visit Node
+                algoSteps.push({
+                    type: 'Dijkstra',
+                    activeNode: u,
+                    visited: new Set(visited),
+                    queueStack: [...pq],
+                    distances: {...distances},
+                    parents: {...parents},
+                    treeEdges: getTreeEdgesFromParents(parents),
+                    changes: {},
+                    description: `Visiting node (min dist: ${d}).`
+                });
+
+                const neighbors = adj[u] || [];
+                for (let v of neighbors) {
+                     // Get weight
+                     const edge = edges.find(e =>
+                        (e.source === u && e.target === v) ||
+                        (!isDirectedCheck() && e.source === v && e.target === u)
+                     );
+                     // If Weighted check is off, treat all as 1, otherwise use weight
+                     const weight = isWeightedCheck() ? (edge ? (edge.weight || 1) : 1) : 1;
+
+                     if (distances[u] + weight < distances[v]) {
+                         const oldDist = distances[v];
+                         distances[v] = distances[u] + weight;
+                         parents[v] = u;
+
+                         // Update existing entry or push new one
+                         const existingIndex = pq.findIndex(item => item.id === v);
+                         if (existingIndex >= 0) {
+                            pq[existingIndex] = { id: v, dist: distances[v] };
+                         } else {
+                            // Only add if not finalized
+                            if (!visited.has(v)) {
+                            pq.push({ id: v, dist: distances[v] });
+                            }
+                         }
+
+                         // Sort PQ for visualization
+                         pq.sort((a, b) => a.dist - b.dist);
+
+                         console.log(...pq)
+
+                         // Step: Relaxation
+                         algoSteps.push({
+                            type: 'Dijkstra',
+                            activeNode: u, // still active
+                            visited: new Set(visited),
+                            queueStack: [...pq],
+                            distances: {...distances},
+                            parents: {...parents},
+                            treeEdges: getTreeEdgesFromParents(parents),
+                            changes: { [v]: true }, // Bold this row
+                            description: `Relaxed ${nodes.find(n=>n.id===v).label}: ${oldDist} -> ${distances[v]}`
+                        });
+                     }
+                }
+            }
+
+            // Final Step
+             algoSteps.push({
+                type: 'Dijkstra',
+                activeNode: null,
+                visited: new Set(visited),
+                queueStack: [],
+                distances: {...distances},
+                parents: {...parents},
+                treeEdges: getTreeEdgesFromParents(parents),
+                changes: {},
+                description: `Dijkstra Complete.`
+            });
+        }
+
         function runDFS(adj, stack, visited) {
             // Re-implementing with explicit stack simulation to handle Back/Cross edges correctly
             // Stack items: { u: nodeId, p: parentId, stage: 'enter'|'exit' }
@@ -964,16 +1203,6 @@
 
                         // Fix: If undirected edge to parent, ignore (it's the tree edge being traversed back)
                         if (!isDirectedGraph) {
-                            // Since we are popping (p -> u), if u is visited and u is parent's parent? No.
-                            // In undirected, if u is already visited, and u != parent's parent (which is not available in item.p usually)
-                            // But here, we just check if it's the reverse of the tree edge.
-                            // Actually, if it's already visited, we just check edge type logic.
-                            // The real duplicate check is done in the neighbor loop usually.
-                            // But for "Lazy" popping, we might see it again.
-                            // In undirected, edge (u, v) is same as (v, u).
-                            // If v is visited, and v is NOT the parent of u in the DFS tree...
-                            // But we don't have full tree structure easily.
-
                             // Heuristic: Check if this exact edge (parent, v) was already recorded as Back Edge.
                             const exists = backEdges.some(e =>
                                 (e.source === parent && e.target === v) || (e.source === v && e.target === parent)
@@ -1132,7 +1361,8 @@
                 edges: edges,
                 nextNodeId: nextNodeId,
                 isDirected: document.getElementById('is-directed').checked,
-                version: 1
+                isWeighted: document.getElementById('is-weighted').checked,
+                version: 2
             };
 
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -1186,6 +1416,9 @@
                     // Restore Settings
                     if (data.isDirected !== undefined) {
                         document.getElementById('is-directed').checked = data.isDirected;
+                    }
+                    if (data.isWeighted !== undefined) {
+                        document.getElementById('is-weighted').checked = data.isWeighted;
                     }
 
                     // Reset Source Selection
@@ -1291,12 +1524,14 @@
             // 4. Apply Transforms to Clone
             const cloneNodes = clone.getElementById('layer-nodes');
             const cloneEdges = clone.getElementById('layer-edges');
+            const cloneWeights = clone.getElementById('layer-weights'); // New layer
             const cloneQueue = clone.getElementById('group-queue');
             const cloneTable = clone.getElementById('group-table');
             const cloneLegend = clone.getElementById('group-legend');
 
             cloneNodes.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
             cloneEdges.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
+            if (cloneWeights) cloneWeights.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
 
             if (cloneTable) cloneTable.setAttribute("transform", `translate(${tableShiftX}, ${tableShiftY})`);
             if (cloneQueue) cloneQueue.setAttribute("transform", `translate(${queueShiftX}, ${queueShiftY})`);
