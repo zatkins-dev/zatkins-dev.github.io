@@ -36,10 +36,17 @@
             cursor: pointer;
         }
 
+        .edge-edit-hover:hover {
+            stroke: #3b82f6 !important; /* blue-500 */
+            stroke-width: 4px !important;
+            cursor: pointer;
+        }
+
         /* Mode-specific cursors */
         .mode-move { cursor: move; }
         .mode-edge { cursor: alias; }
         .mode-source { cursor: pointer; }
+        .mode-edit { cursor: context-menu; }
 
         /* UI Panel */
         .panel {
@@ -60,13 +67,20 @@
                 <button onclick="setMode('node')" id="btn-node" class="px-3 py-1.5 rounded-md text-sm font-medium bg-white shadow-sm text-gray-800 transition-colors">Add Nodes</button>
                 <button onclick="setMode('edge')" id="btn-edge" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors">Add Edges</button>
                 <button onclick="setMode('move')" id="btn-move" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors">Move</button>
+                <button onclick="setMode('edit')" id="btn-edit" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors" title="Edit Properties (Weights)">Edit</button>
                 <button onclick="setMode('delete')" id="btn-delete" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-300 transition-colors text-red-600">Delete</button>
             </div>
 
-            <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                <input type="checkbox" id="is-directed" class="rounded text-blue-600 focus:ring-blue-500">
-                <span>Directed Edges</span>
-            </label>
+            <div class="flex flex-col gap-1">
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                    <input type="checkbox" id="is-directed" class="rounded text-blue-600 focus:ring-blue-500">
+                    <span>Directed</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                    <input type="checkbox" id="is-weighted" class="rounded text-blue-600 focus:ring-blue-500" onchange="render()">
+                    <span>Weighted</span>
+                </label>
+            </div>
 
             <!-- Graph Actions -->
             <div class="flex items-center gap-2 border-l border-gray-300 pl-4">
@@ -112,6 +126,7 @@
 
                 <!-- Groups ensure proper layering -->
                 <g id="layer-edges"></g>
+                <g id="layer-weights"></g> <!-- New layer for weights -->
                 <g id="layer-nodes"></g>
                 <!-- UI Layer inside SVG for export -->
                 <g id="layer-ui"></g>
@@ -145,12 +160,6 @@
         </div>
     </div>
 
-    <div class="fixed bottom-10 right-10">
-      <button onclick="location.href='/index.html'" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="80%" height="80%" viewBox="0 0 24 24"><path fill="currentColor" d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1"/></svg>
-      </button>
-    </div>
-
     <!-- Alert / Toast -->
     <div id="toast" class="fixed top-20 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg opacity-0 transition-opacity pointer-events-none transform translate-y-2">
         Message
@@ -161,14 +170,12 @@
         let nodes = [];
         let edges = [];
         let nextNodeId = 0;
-        let mode = 'node'; // node, edge, source, move, delete
-        let isDirected = false;
+        let mode = 'node'; // node, edge, source, move, delete, edit
         let sourceNodeId = null;
 
         // Interaction State
         let dragSourceNode = null;
         let dragNodeId = null;
-        let tempEdgeLine = null;
 
         // Algo State
         let algoSteps = [];
@@ -179,18 +186,19 @@
         const svg = document.getElementById('main-svg');
         const layerNodes = document.getElementById('layer-nodes');
         const layerEdges = document.getElementById('layer-edges');
+        const layerWeights = document.getElementById('layer-weights');
         const layerUI = document.getElementById('layer-ui');
         const playbackControls = document.getElementById('playback-controls');
         const btnNode = document.getElementById('btn-node');
         const btnEdge = document.getElementById('btn-edge');
         const btnMove = document.getElementById('btn-move');
+        const btnEdit = document.getElementById('btn-edit');
         const btnDelete = document.getElementById('btn-delete');
         const btnSource = document.getElementById('btn-source');
         const sourceDisplay = document.getElementById('source-display');
 
         // --- Initialization ---
 
-        // Handle resizing for SVG
         function resizeSVG() {
             const container = document.getElementById('canvas-container');
             svg.setAttribute('viewBox', `0 0 ${container.clientWidth} ${container.clientHeight}`);
@@ -203,7 +211,7 @@
         function setMode(newMode) {
             mode = newMode;
             // Reset UI buttons
-            [btnNode, btnEdge, btnSource, btnMove, btnDelete].forEach(b => {
+            [btnNode, btnEdge, btnSource, btnMove, btnEdit, btnDelete].forEach(b => {
                 b.classList.remove('bg-white', 'shadow-sm', 'text-gray-800');
                 b.classList.add('text-gray-600', 'hover:bg-gray-300');
             });
@@ -213,16 +221,24 @@
             if (newMode === 'node') activeBtn = btnNode;
             else if (newMode === 'edge') activeBtn = btnEdge;
             else if (newMode === 'move') activeBtn = btnMove;
+            else if (newMode === 'edit') activeBtn = btnEdit;
             else if (newMode === 'delete') activeBtn = btnDelete;
             else activeBtn = btnSource;
 
             activeBtn.classList.remove('text-gray-600', 'hover:bg-gray-300');
             activeBtn.classList.add('bg-white', 'shadow-sm', 'text-gray-800');
 
-            // Reset temp edge if switching modes
             dragSourceNode = null;
             dragNodeId = null;
             render();
+        }
+
+        function isDirectedCheck() {
+            return document.getElementById('is-directed').checked;
+        }
+
+        function isWeightedCheck() {
+            return document.getElementById('is-weighted').checked;
         }
 
         svg.addEventListener('click', (e) => {
@@ -324,12 +340,34 @@
                         edges.push({
                             source: dragSourceNode,
                             target: targetNodeId,
-                            directed: isDirectedCheck()
+                            directed: isDirectedCheck(),
+                            weight: 1 // Default weight
                         });
                     }
                 }
                 dragSourceNode = null;
                 render();
+            }
+        }
+
+        function editEdge(index) {
+            if (!isWeightedCheck()) {
+                showToast("Enable 'Weighted' mode to edit weights.");
+                return;
+            }
+
+            const edge = edges[index];
+            const currentWeight = edge.weight !== undefined ? edge.weight : 1;
+
+            const newWeightStr = prompt("Enter edge weight:", currentWeight);
+            if (newWeightStr !== null) {
+                const w = parseInt(newWeightStr, 10);
+                if (!isNaN(w)) {
+                    edge.weight = w;
+                    render();
+                } else {
+                    showToast("Invalid number entered.");
+                }
             }
         }
 
@@ -382,25 +420,26 @@
             }
         });
 
-        function isDirectedCheck() {
-            return document.getElementById('is-directed').checked;
-        }
-
         // --- Rendering ---
 
         function render() {
             // Clear layers
             layerNodes.innerHTML = '';
             layerEdges.innerHTML = '';
-            layerUI.innerHTML = ''; // Only clear UI if not in algo mode or handled separately
+            layerWeights.innerHTML = '';
+            layerUI.innerHTML = '';
 
             const step = (isAlgoRunning && currentStepIndex >= 0) ? algoSteps[currentStepIndex] : null;
+            const showWeights = isWeightedCheck();
 
             // 1. Draw Edges
             edges.forEach((edge, index) => {
                 const s = nodes.find(n => n.id === edge.source);
                 const t = nodes.find(n => n.id === edge.target);
                 if (!s || !t) return;
+
+                // Ensure weight exists if undefined
+                if (edge.weight === undefined) edge.weight = 1;
 
                 const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
@@ -423,14 +462,22 @@
                 path.setAttribute("stroke-width", "2");
                 path.setAttribute("fill", "none");
 
-                // Enable hover effect for deletion
-                if (mode === 'delete' && !isAlgoRunning) {
-                    path.setAttribute("class", "edge-hover");
-                    path.onclick = (e) => {
-                        e.stopPropagation();
-                        edges.splice(index, 1);
-                        render();
-                    };
+                // Interactivity based on mode
+                if (!isAlgoRunning) {
+                    if (mode === 'delete') {
+                        path.setAttribute("class", "edge-hover");
+                        path.onclick = (e) => {
+                            e.stopPropagation();
+                            edges.splice(index, 1);
+                            render();
+                        };
+                    } else if (mode === 'edit' && showWeights) {
+                        path.setAttribute("class", "edge-edit-hover");
+                        path.onclick = (e) => {
+                            e.stopPropagation();
+                            editEdge(index);
+                        };
+                    }
                 }
 
                 if (edge.directed) {
@@ -438,7 +485,6 @@
                 }
 
                 // Algo styling for edges
-                // Fixed: Check treeEdges regardless of type (BFS or DFS)
                 if (step) {
                     // 1. Tree Edges (Purple, Bold)
                     if (step.treeEdges) {
@@ -505,6 +551,51 @@
                 }
 
                 layerEdges.appendChild(path);
+
+                // Render Weights
+                if (showWeights) {
+                    const midX = (s.x + t.x) / 2;
+                    const midY = (s.y + t.y) / 2;
+
+                    // Group for weight
+                    const wGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    if (!isAlgoRunning && mode === 'edit') {
+                        wGroup.style.cursor = 'pointer';
+                        wGroup.onclick = (e) => {
+                            e.stopPropagation();
+                            editEdge(index);
+                        }
+                    }
+
+                    // Background Box
+                    const textContent = String(edge.weight);
+                    const boxWidth = 10 + (textContent.length * 7);
+                    const boxHeight = 16;
+
+                    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    rect.setAttribute("x", midX - boxWidth/2);
+                    rect.setAttribute("y", midY - boxHeight/2);
+                    rect.setAttribute("width", boxWidth);
+                    rect.setAttribute("height", boxHeight);
+                    rect.setAttribute("rx", "3");
+                    rect.setAttribute("fill", "#ffffff");
+                    rect.setAttribute("stroke", "#9ca3af");
+                    rect.setAttribute("stroke-width", "1");
+
+                    // Text
+                    const wText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    wText.setAttribute("x", midX);
+                    wText.setAttribute("y", midY + 4);
+                    wText.setAttribute("text-anchor", "middle");
+                    wText.setAttribute("font-size", "11");
+                    wText.setAttribute("font-family", "monospace");
+                    wText.setAttribute("fill", "#374151");
+                    wText.textContent = textContent;
+
+                    wGroup.appendChild(rect);
+                    wGroup.appendChild(wText);
+                    layerWeights.appendChild(wGroup);
+                }
             });
 
             // 2. Draw Nodes
@@ -964,16 +1055,6 @@
 
                         // Fix: If undirected edge to parent, ignore (it's the tree edge being traversed back)
                         if (!isDirectedGraph) {
-                            // Since we are popping (p -> u), if u is visited and u is parent's parent? No.
-                            // In undirected, if u is already visited, and u != parent's parent (which is not available in item.p usually)
-                            // But here, we just check if it's the reverse of the tree edge.
-                            // Actually, if it's already visited, we just check edge type logic.
-                            // The real duplicate check is done in the neighbor loop usually.
-                            // But for "Lazy" popping, we might see it again.
-                            // In undirected, edge (u, v) is same as (v, u).
-                            // If v is visited, and v is NOT the parent of u in the DFS tree...
-                            // But we don't have full tree structure easily.
-
                             // Heuristic: Check if this exact edge (parent, v) was already recorded as Back Edge.
                             const exists = backEdges.some(e =>
                                 (e.source === parent && e.target === v) || (e.source === v && e.target === parent)
@@ -1132,7 +1213,8 @@
                 edges: edges,
                 nextNodeId: nextNodeId,
                 isDirected: document.getElementById('is-directed').checked,
-                version: 1
+                isWeighted: document.getElementById('is-weighted').checked,
+                version: 2
             };
 
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -1186,6 +1268,9 @@
                     // Restore Settings
                     if (data.isDirected !== undefined) {
                         document.getElementById('is-directed').checked = data.isDirected;
+                    }
+                    if (data.isWeighted !== undefined) {
+                        document.getElementById('is-weighted').checked = data.isWeighted;
                     }
 
                     // Reset Source Selection
@@ -1291,12 +1376,14 @@
             // 4. Apply Transforms to Clone
             const cloneNodes = clone.getElementById('layer-nodes');
             const cloneEdges = clone.getElementById('layer-edges');
+            const cloneWeights = clone.getElementById('layer-weights'); // New layer
             const cloneQueue = clone.getElementById('group-queue');
             const cloneTable = clone.getElementById('group-table');
             const cloneLegend = clone.getElementById('group-legend');
 
             cloneNodes.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
             cloneEdges.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
+            if (cloneWeights) cloneWeights.setAttribute("transform", `translate(${graphShiftX}, ${graphShiftY})`);
 
             if (cloneTable) cloneTable.setAttribute("transform", `translate(${tableShiftX}, ${tableShiftY})`);
             if (cloneQueue) cloneQueue.setAttribute("transform", `translate(${queueShiftX}, ${queueShiftY})`);
