@@ -55,7 +55,7 @@ sections:
       title: Featured Projects
       filters:
         folders:
-          - project
+          - projects
         featured_only: true
     design:
       view: article-grid
@@ -67,8 +67,8 @@ sections:
       title: Recent Publications
       filters:
         folders:
-          - publication
-        exclude_featured: false
+          - publications
+        featured_only: false
     design:
       view: citation
       css_class: pt-8 pb-8
@@ -79,7 +79,7 @@ sections:
       title: Recent & Upcoming Talks
       filters:
         folders:
-          - event
+          - talks
     design:
       view: article-grid
       columns: 3

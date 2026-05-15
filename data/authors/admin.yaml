@@ -7,8 +7,8 @@ name:
   given: Zachary Ryan
   family: Atkins
   pronouns: he/they
-status:
-  icon: "☕️"
+# status:
+#   icon: "☕️"
 role: Graduate Research Assistant
 bio: |
   Zachary R. Atkins, who goes by Zach, is a computer science PhD student

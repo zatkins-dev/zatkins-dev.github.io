@@ -15,6 +15,8 @@ tags:
   - ChordDyn
   - Julia
 
+status: completed
+
 image:
   caption: 'Trajectory of a double pendulum mapped onto the Tonnetz'
   focal_point: ''

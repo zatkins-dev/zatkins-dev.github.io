@@ -12,6 +12,8 @@ tags:
   - Python
   - CLI
 
+status: ongoing
+
 featured: true
 
 ---

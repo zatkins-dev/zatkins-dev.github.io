@@ -1,6 +1,7 @@
 ---
 title: The Algorithmic Development of a Fully Asynchronous Conjugate Gradient Method
 event: 17th Copper Mountain Conference on Iterative Methods
+type: events
 
 authors:
 - admin
@@ -18,6 +19,9 @@ links:
 - type: slides
   url: slides.pdf
 
+tags:
+  - CCIMM
+  - Copper Mountain
 
 abstract: |
   Decentralized computing environments (DCE), or environments, such as edge

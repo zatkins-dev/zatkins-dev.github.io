@@ -16,6 +16,8 @@ tags:
 
 featured: true
 
+status: ongoing
+
 ---
 
 Ratel iMPM is a fast, powerful material point method solver implemented in the Ratel application, capable of simulating billions of material points on thousands of GPUs.

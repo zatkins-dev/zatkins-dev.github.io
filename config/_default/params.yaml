@@ -35,7 +35,7 @@ hugoblox:
     # Mode: 'light', 'dark', or 'system' (follows OS preference)
     mode: system
     # Theme pack: name from data/themes/ or { light: "x", dark: "y" } for mix-and-match
-    pack: "minimal"
+    pack: "custom"
     # # Optional: Override theme pack colors
     # colors:
     #   primary: "" # Tailwind palette name or hex (e.g., "indigo" or "#6366f1")
@@ -156,7 +156,7 @@ hugoblox:
       enable: true
     # Reading time estimates
     reading_time:
-      enable: true
+      enable: false
     # Academic citations
     citations:
       style: ieee # apa | mla | chicago | ieee
@@ -168,7 +168,7 @@ hugoblox:
   search:
     enable: true
     # Trending/suggested search terms
-    suggestions: []
+    suggestions: [MPM, Ratel, libCEED, PETSc]
     # Quick action shortcuts in search modal
     quick_actions: []
 

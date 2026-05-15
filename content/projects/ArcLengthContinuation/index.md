@@ -15,6 +15,8 @@ tags:
 image:
   caption: "Buckling Behavior of a Lee Frame with SNESNEWTONAL"
 
+status: completed
+
 featured: true
 ---
 
