@@ -1,12 +1,11 @@
 ---
-title: Resilient s-ACD for Asynchronous Collaborative Solutions of Systems of Linear
-  Equations
+title: Resilient s-ACD for Asynchronous Collaborative Solutions of Systems of Linear Equations
 authors:
 - Lucas Erlandson
 - admin
 - Alyson Fox
-- Christopher Vogl
-- Agnieszka Miedlar
+- Christopher J. Vogl
+- Agnieszka Miȩdlar
 - Colin Ponce
 date: '2023-09-26'
 publishDate: '2025-09-01T01:03:33.214708Z'

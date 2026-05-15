@@ -1,12 +1,11 @@
 ---
-title: Distribution system voltage prediction from smart inverters using decentralized
-  regression
+title: Distribution system voltage prediction from smart inverters using decentralized regression
 authors:
 - admin
 - Christopher J. Vogl
 - Achintya Madduri
 - Nan Duan
-- Agnieszka K. Miedlar
+- Agnieszka Miȩdlar
 - Daniel Merl
 date: '2021-01-01'
 publishDate: '2025-09-01T01:03:33.224629Z'
