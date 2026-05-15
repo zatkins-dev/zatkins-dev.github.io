@@ -18,6 +18,16 @@ defaultContentLanguageInSubdir: false
 removePathAccents: true
 
 ############################
+## PAGE OPTIONS
+############################
+
+cascade:
+  - target:
+      path: /slides/**
+      kind: page
+    outputs: [HTML, present]
+
+############################
 ## ADVANCED
 ############################
 
@@ -38,11 +48,11 @@ outputs:
   home: [HTML, RSS, headers, redirects, backlinks]
   section: [HTML, RSS]
 imaging:
-  resampleFilter: lanczos
+  resampleFilter: Lanczos
   quality: 100
-  anchor: smart
+  anchor: Smart
   hint: picture
-timeout: 600000
+timeout: 60s
 taxonomies:
   author: authors
   tag: tags

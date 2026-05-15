@@ -3,27 +3,28 @@
 title: ""
 date: 2022-10-24
 type: landing
-
-design:
-  # Default section spacing
-  spacing: "6rem"
-
 sections:
-  - block: custom-bio
+  - block: resume-biography-old
     content:
       # Choose a user profile to display (a folder name within `content/authors/`)
       username: admin
-      text: ""
       # Show a call-to-action button under your biography? (optional)
       button:
         text: Download CV
         url: https://github.com/zatkins-dev/cv/blob/main/latest.pdf
+      headings:
+        about: 'About Me'
+        education: ''
+        interests: ''
     design:
-      css_class: dark
+      css_class: dark pt-0 pb-8
+      name:
+        size: md
       # Avatar customization
       avatar:
         size: large  # Options: small (150px), medium (200px, default), large (320px), xl (400px), xxl (500px)
         shape: circle # Options: circle (default), square, rounded
+      # Use the new Gradient Mesh which automatically adapts to the selected theme colors
       background:
         color: black
         image:
@@ -47,6 +48,7 @@ sections:
         Please reach out to collaborate 😃
     design:
       columns: '1'
+      css_class: pt-8 pb-8
   - block: collection
     id: projects
     content:
@@ -58,16 +60,19 @@ sections:
     design:
       view: article-grid
       columns: 3
+      css_class: pt-8 pb-8
   - block: collection
+    id: papers
     content:
       title: Recent Publications
-      text: ""
       filters:
         folders:
           - publication
         exclude_featured: false
     design:
       view: citation
+      css_class: pt-8 pb-8
+
   - block: collection
     id: talks
     content:
@@ -78,4 +83,6 @@ sections:
     design:
       view: article-grid
       columns: 3
+      css_class: pt-8 pb-0
+
 ---

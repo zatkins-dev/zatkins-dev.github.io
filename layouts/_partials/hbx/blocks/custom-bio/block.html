@@ -80,7 +80,9 @@
 
     <div class="avatar-wrapper {{ if $img }}-mt-[105px]{{else}}mt-10{{end}}" style="width: {{$display_size}}px; height: {{$display_size}}px;">
       {{ $avatar_image := $avatar.Fill (printf "%sx%s Center" $generation_size $generation_size) }}
-      <img class="avatar {{$shape_class}} bg-white dark:bg-gray-800 p-1" src="{{ $avatar_image.RelPermalink }}" alt="{{$person_page.Title}}"
+      <img class="avatar {{$shape_class}} bg-white dark:bg-gray-800 p-1"
+           src="{{ $avatar_image.RelPermalink }}"
+           alt="{{$person_page.Title}}"
            width="{{$display_size}}" height="{{$display_size}}"
            style="width: {{$display_size}}px; height: {{$display_size}}px; object-fit: cover;">
       {{with $person.status.icon}}<span class="avatar-emoji">{{.|emojify}}</span>{{end}}
