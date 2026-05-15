@@ -1,0 +1,1 @@
+Lucas Erlandson, Zachary R Atkins, Alyson Fox, Christopher Vogl, Agnieszka Miedlar, and Colin Ponce. 2023. Resilient s-ACD for asynchronous collaborative solutions of systems of linear equations. September 26, 2023. 441–450.

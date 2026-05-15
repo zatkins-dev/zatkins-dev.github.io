@@ -10,6 +10,8 @@ date: '2024-10-31'
 publishDate: '2025-09-01T01:03:33.232204Z'
 publication_types:
 - article-journal
+publication: SIAM Journal on Scientific Computing
+publication_short: SIAM J. Sci. Comput.
 hugoblox.ids: { doi: 10.1137/23M1605648 }
 abstract: Moving scientific computation from high-performance computing (HPC) and
   cloud computing (CC) environments to devices on the edge, i.e., physically near

@@ -1,0 +1,1 @@
+Christopher J. Vogl, Zachary R. Atkins, Alyson Fox, Agnieszka Miȩdlar, and Colin Ponce. 2024. Modifying the asynchronous jacobi method for data corruption resilience. *SIAM J. Sci. Comput.* 46, 5 (October 2024), A3258–A3281.

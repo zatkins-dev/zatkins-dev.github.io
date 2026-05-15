@@ -159,7 +159,7 @@ hugoblox:
       enable: false
     # Academic citations
     citations:
-      style: ieee # apa | mla | chicago | ieee
+      style: chicago # apa | mla | chicago | ieee
 
   # ────────────────────────────────────────────────────────────────────────────
   # SEARCH
