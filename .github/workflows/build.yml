@@ -145,7 +145,7 @@ jobs:
       id: upload
       uses: actions/upload-pages-artifact@v4
       with:
-        path: ./publicname: Build
+        path: ./public: Build
 
 env:
   NODE_VERSION: '22'
