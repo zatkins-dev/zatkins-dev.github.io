@@ -1,0 +1,1 @@
+Zachary R. Atkins, Jed Brown, Fabio Di Gioacchino, Layla Ghaffari, Zachariah T. Irwin, Rezgar Shakeri, Karen Stengel, and Jeremy L. Thompson. 2026. Ratel: Performance portable solid mechanics with libCEED and PETSc. *Journal of Open Source Software* 11, 118 (2026), 8388.

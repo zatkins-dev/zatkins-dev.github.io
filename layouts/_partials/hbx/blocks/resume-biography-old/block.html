@@ -1,0 +1,398 @@
+{{/* Hugo Blox: Biography 3 */}}
+{{/* Documentation: https://hugoblox.com/blocks/ */}}
+{{/* License: https://github.com/HugoBlox/hugo-blox-builder/blob/main/LICENSE.md */}}
+
+{{/* Initialise */}}
+{{ $page := .wcPage }}
+{{ $block := .wcBlock }}
+
+{{ $content := $block.content }}
+{{ if not (reflect.IsMap $content) }}{{ $content = dict }}{{ end }}
+{{ $design := $block.design }}
+{{ if not (reflect.IsMap $design) }}{{ $design = dict }}{{ end }}
+
+{{ $author := "me" }}
+{{ $authorRaw := index $content "username" }}
+{{ if eq (printf "%T" $authorRaw) "string" }}
+  {{ $author = $authorRaw }}
+{{ end }}
+{{ $profile := partial "functions/get_author_profile" $author }}
+{{ $avatar := $profile.avatar }}
+{{ $headings := index $content "headings" }}
+{{ if not (reflect.IsMap $headings) }}{{ $headings = dict }}{{ end }}
+
+{{/* Avatar customization parameters */}}
+{{ $avatar_size := "large" }}
+{{ $avatar_shape := "circle" }}
+{{ $avatar_config := index $design "avatar" }}
+{{ if and $avatar_config (reflect.IsMap $avatar_config) }}
+  {{ $avatar_size_raw := index $avatar_config "size" }}
+  {{ if eq (printf "%T" $avatar_size_raw) "string" }}
+    {{ $avatar_size = $avatar_size_raw }}
+  {{ end }}
+  {{ $avatar_shape_raw := index $avatar_config "shape" }}
+  {{ if eq (printf "%T" $avatar_shape_raw) "string" }}
+    {{ $avatar_shape = $avatar_shape_raw }}
+  {{ end }}
+{{ end }}
+
+{{/* Size mappings optimized for 2025 standards: display_size -> [display_px, generation_px] */}}
+{{ $size_map := dict "small" (slice "150" "300") "medium" (slice "200" "400") "large" (slice "320" "640") "xl" (slice "400" "800") "xxl" (slice "500" "1000") }}
+{{ $size_config := index $size_map $avatar_size | default (index $size_map "medium") }}
+{{ $display_size := index $size_config 0 }}
+{{ $generation_size := index $size_config 1 }}
+
+{{/* Shape class mappings */}}
+{{ $shape_classes := dict "circle" "rounded-full" "square" "rounded-none" "rounded" "rounded-lg" }}
+{{ $shape_class := index $shape_classes $avatar_shape | default "rounded-full" }}
+
+{{ $banner_filename := "" }}
+{{ $banner_config := index $design "banner" }}
+{{ if and $banner_config (reflect.IsMap $banner_config) }}
+  {{ $banner_raw := index $banner_config "filename" }}
+  {{ if eq (printf "%T" $banner_raw) "string" }}
+    {{ $banner_filename = $banner_raw }}
+  {{ end }}
+{{ end }}
+
+{{ $bio_style := "" }}
+{{ $bio_config := index $design "biography" }}
+{{ if and $bio_config (reflect.IsMap $bio_config) }}
+  {{ $bio_style_raw := index $bio_config "style" }}
+  {{ if eq (printf "%T" $bio_style_raw) "string" }}
+    {{ $bio_style = $bio_style_raw }}
+  {{ end }}
+{{ end }}
+
+{{ $date_format := "Jan 2006" }}
+{{ $date_format_raw := index $design "date_format" }}
+{{ if eq (printf "%T" $date_format_raw) "string" }}
+  {{ $date_format = strings.TrimSpace $date_format_raw | default "Jan 2006" }}
+{{ end }}
+
+
+<div class="resume-biography-old px-3 flex flex-col md:flex-row justify-center gap-x-12 gap-y-4">
+  <div class="flex-none m-w-7xl mx-auto md:mx-0">
+    {{/* Banner Image */}}
+    {{ $img := "" }}
+    {{/* Resolve image from page bundle, site assets, remote, or static URLs */}}
+    {{ $image_resource := false }}
+    {{ $image_url := "" }}
+
+    {{ if $banner_filename }}
+      {{ $image_path := strings.TrimSpace (printf "%v" $banner_filename) }}
+      {{ $is_remote := or (strings.HasPrefix $image_path "http://") (strings.HasPrefix $image_path "https://") }}
+
+      {{ if $is_remote }}
+        {{ $remote := try (resources.GetRemote $image_path) }}
+        {{ if and $remote (not $remote.Err) }}
+          {{ $image_resource = $remote.Value }}
+        {{ else }}
+          {{ $image_url = $image_path }}
+        {{ end }}
+      {{ else }}
+        {{ $image_path = strings.TrimPrefix "/" $image_path }}
+        {{ $image_path = strings.TrimPrefix "./" $image_path }}
+        {{ $image_path = strings.TrimPrefix "assets/" $image_path }}
+        {{ $image_path = strings.TrimPrefix "media/" $image_path }}
+        {{ $normalized := path.Clean $image_path }}
+
+        {{ if and $normalized (ne $normalized ".") }}
+          {{ with $page }}
+            {{ $image_resource = (.Resources.ByType "image").GetMatch $normalized }}
+          {{ end }}
+          {{ if not $image_resource }}
+            {{ $image_resource = resources.Get (path.Join "media" $normalized) }}
+          {{ end }}
+          {{ if not $image_resource }}
+            {{ $image_url = printf "/media/%s" $normalized }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+
+    {{ $img = $image_resource }}
+
+    {{ if $img }}
+      {{/* reflect.IsImageResourceProcessable → false for SVG; GIF skipped to preserve animation */}}
+      {{ $canProcess := and (reflect.IsImageResourceProcessable $img) (ne $img.MediaType.SubType "gif") }}
+      <div class="relative w-full h-64 rounded-2xl overflow-hidden shadow-xl mb-8">
+        {{ if $canProcess }}
+          {{ $responsive := partial "functions/process_responsive_image.html" (dict
+              "image" $img
+              "mode" "fill"
+              "aspect_ratio" "16:9"
+              "sizes" (slice 768 1024 1366 1920 2560)
+          ) }}
+          <img class="absolute inset-0 w-full h-full object-cover"
+                srcset="{{ $responsive.srcset }}"
+                sizes="100vw"
+                src="{{ $responsive.fallback.RelPermalink }}"
+                alt="" />
+        {{ else }}
+          {{/* SVG or GIF: pass through without responsive processing */}}
+          <img class="absolute inset-0 w-full h-full object-cover"
+                src="{{$img.RelPermalink}}"
+                alt="" />
+        {{ end }}
+      </div>
+    {{ else if $image_url }}
+      {{ $is_external := or (strings.HasPrefix $image_url "http://") (strings.HasPrefix $image_url "https://") }}
+      <div class="relative w-full h-64 rounded-2xl overflow-hidden shadow-xl mb-8">
+          <img class="absolute inset-0 w-full h-full object-cover"
+              src="{{ if $is_external }}{{ $image_url }}{{ else }}{{ $image_url | relURL }}{{ end }}"
+              alt="" />
+      </div>
+    {{ end }}
+
+    <div id="profile" class="flex justify-center items-center flex-col pt-0">
+      {{/* Avatar */}}
+      {{ $status_icon := "" }}
+      {{ $show_status := true }}
+      {{ $show_status_raw := index $design "show_status" }}
+      {{ if eq (printf "%T" $show_status_raw) "bool" }}
+        {{ $show_status = $show_status_raw }}
+      {{ end }}
+      {{ if $show_status }}
+        {{ $status := $profile.status }}
+        {{ if and $status (reflect.IsMap $status) }}
+          {{ $status_icon_raw := index $status "icon" }}
+          {{ if eq (printf "%T" $status_icon_raw) "string" }}
+            {{ $status_icon = strings.TrimSpace $status_icon_raw }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+
+      {{ if $avatar }}
+      <div class="avatar-wrapper {{ if $img }}-mt-4{{else}}mt-10{{end}}" style="width: {{$display_size}}px; height: {{$display_size}}px;">
+        {{ $avatar_image := $avatar.Fill (printf "%sx%s Center" $generation_size $generation_size) }}
+        <img class="avatar {{$shape_class}} border-4 bg-white dark:bg-gray-1000 shadow-2xl"
+            src="{{ $avatar_image.RelPermalink }}"
+            alt="{{$profile.title}}"
+            width="{{$display_size}}"
+            height="{{$display_size}}"
+            style="width: {{$display_size}}px; height: {{$display_size}}px; object-fit: cover;">
+        {{ with $status_icon }}<span class="avatar-emoji">{{ . | emojify }}</span>{{ end }}
+      </div>
+      {{ end }}
+
+      <div class="portrait-title dark:text-white">
+
+        {{/* Name and Role - Centered */}}
+        <div class="text-3xl font-bold mb-2 mt-6">
+          {{- if $profile.name_pronunciation -}}
+            <ruby>
+              <rb>{{ $profile.title }}</rb>
+              <rt>{{ $profile.name_pronunciation }}</rt>
+            </ruby>
+          {{- else -}}
+            {{- $profile.title -}}
+          {{- end -}}
+        </div>
+
+        {{ $pronouns := "" }}
+        {{ with $profile.pronouns }}
+          {{ if eq (printf "%T" .) "string" }}
+            {{ $pronouns = . }}
+          {{ end }}
+        {{ end }}
+        {{ with $pronouns }}
+          <div class="text-lg font-normal text-gray-600 dark:text-gray-400 -mt-1 mb-2">({{ . }})</div>
+        {{ end }}
+
+        {{ $role_text := "" }}
+        {{ with $profile.role }}
+          {{ if eq (printf "%T" .) "string" }}
+            {{ $role_text = . }}
+          {{ end }}
+        {{ end }}
+        {{ with $role_text }}
+          <h3 class="font-semibold mb-1">{{ . | markdownify | emojify }}</h3>
+        {{ end }}
+
+
+        {{ $affiliations_raw := $profile.affiliations }}
+        {{ $affiliations := slice }}
+        {{ if reflect.IsSlice $affiliations_raw }}
+          {{ $affiliations = $affiliations_raw }}
+        {{ else if eq (printf "%T" $affiliations_raw) "string" }}
+          {{ $affiliations = slice $affiliations_raw }}
+        {{ end }}
+        {{ range $affiliations }}
+          {{ $aff_name := "" }}
+          {{ $aff_url := "" }}
+          {{ if reflect.IsMap . }}
+            {{ $nameRaw := index . "name" | default (index . "title") }}
+            {{ if ne $nameRaw nil }}
+              {{ $aff_name = printf "%v" $nameRaw }}
+            {{ end }}
+            {{ $urlRaw := index . "url" }}
+            {{ if eq (printf "%T" $urlRaw) "string" }}
+              {{ $aff_url = $urlRaw }}
+            {{ end }}
+          {{ else if eq (printf "%T" .) "string" }}
+            {{ $aff_name = . }}
+          {{ end }}
+          {{ $aff_name = strings.TrimSpace $aff_name }}
+          {{ $aff_url = strings.TrimSpace $aff_url }}
+          {{ if $aff_name }}
+            <div class="mb-2">
+              {{ if $aff_url }}
+                {{ $link := $aff_url }}
+                {{ $scheme := (urls.Parse $link).Scheme }}
+                {{ $target := "" }}
+                {{ if not $scheme }}
+                  {{ if not (hasPrefix $link "#") }}
+                    {{ $link = $link | relLangURL }}
+                  {{ end }}
+                  {{ if eq (path.Ext $link) ".pdf" }}{{ $target = "target=\"_blank\" rel=\"noopener\"" }}{{ end }}
+                {{ else if in (slice "http" "https") $scheme }}
+                  {{ $target = "target=\"_blank\" rel=\"noopener\"" }}
+                {{ end }}
+                <a href="{{ $link | safeURL }}" {{ $target | safeHTMLAttr }} style="white-space: pre-wrap">{{ $aff_name }}</a>
+              {{ else }}
+                <span style="white-space: pre-wrap">{{ $aff_name }}</span>
+              {{ end }}
+            </div>
+          {{ end }}
+        {{ end }}
+
+        <ul class="network-icon dark:text-zinc-100">
+          {{ range $profile.links }}
+          {{ $pack := or .icon_pack "fas" }}
+          {{ $pack_prefix := $pack }}
+          {{ if in (slice "fab" "fas" "far" "fal") $pack }}
+            {{ $pack_prefix = "fa" }}
+          {{ end }}
+          {{ $link := .url | default .link }}
+          {{ $scheme := (urls.Parse $link).Scheme }}
+          {{ $target := "" }}
+          {{ if not $scheme }}
+            {{ $link = (.url | default .link) | relLangURL }}
+            {{ if eq (path.Ext $link) ".pdf" }}{{ $target = "target=\"_blank\" rel=\"noopener\"" }}{{ end }}
+          {{ else if in (slice "http" "https") $scheme }}
+            {{ $target = "target=\"_blank\" rel=\"noopener\"" }}
+          {{ end }}
+          <li>
+            <a href="{{ $link | safeURL }}" {{ $target | safeHTMLAttr }} aria-label="{{ .icon }}"
+              {{ with .label }} data-toggle="tooltip" data-placement="top" title="{{.}}"{{ end }}>
+              {{ partial "functions/get_icon" (dict "name" .icon "attributes" "style=\"height: 1.5rem;\"")  }}
+            </a>
+          </li>
+          {{ end }}
+        </ul>
+      </div>
+      <div class="place-content-center mx-auto mt-3">
+        {{ with $block.content.button }}
+        <a href="{{.url}}" target="_blank"
+          class="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium
+                text-gray-900 bg-white border border-gray-200
+                hover:bg-slate-100 hover:text-primary-700
+                focus:z-10 focus:ring-4 focus:outline-none focus:ring-gray-200 focus:text-primary-700
+                dark:bg-slate-900 dark:text-zinc-100 dark:border-gray-600
+                dark:hover:text-white dark:hover:bg-gray-800
+                dark:focus:ring-gray-700">
+        <svg class="w-3.5 h-3.5 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M14.707 7.793a1 1 0 0 0-1.414 0L11 10.086V1.5a1 1 0 0 0-2 0v8.586L6.707 7.793a1 1 0 1 0-1.414 1.414l4 4a1 1 0 0 0 1.416 0l4-4a1 1 0 0 0-.002-1.414Z"/>
+          <path d="M18 12h-2.55l-2.975 2.975a3.5 3.5 0 0 1-4.95 0L4.55 12H2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Zm-3 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/>
+        </svg> {{.text}}</a>
+        {{ end }}
+      </div>
+    </div>
+
+  </div>
+
+
+  <div class="flex-auto max-w-prose md:mt-12">
+    {{ $bio_content := "" }}
+    {{ $bio_override_raw := index $content "text" }}
+    {{ if ne $bio_override_raw nil }}
+      {{ $bio_content = printf "%v" $bio_override_raw | emojify | $page.RenderString }}
+    {{ end }}
+    {{ if not $bio_content }}
+      {{ with $profile.bio }}{{ $bio_content = printf "%v" . | emojify | $page.RenderString }}{{ end }}
+    {{ end }}
+    {{ with $bio_content }}
+      {{ $i18n_about := i18n "about_me" }}
+      {{ $about_default := cond (eq $i18n_about "about_me") "About Me" $i18n_about }}
+      {{ $about_heading := $about_default }}
+      {{ $about_heading_raw := index $headings "about" }}
+      {{ if eq (printf "%T" $about_heading_raw) "string" }}
+        {{ $about_heading_raw = strings.TrimSpace $about_heading_raw }}
+        {{ if ne $about_heading_raw "" }}
+          {{ $about_heading = $about_heading_raw }}
+        {{ end }}
+      {{ end }}
+      <div class="pt-2 justify-content-center prose dark:text-zinc-100 mb-2">
+        <h2 class="text-white">{{ $about_heading }}</h2>
+        <div class="bio-text" {{ if $bio_style }}{{ (printf "style=\"%s\"" $bio_style) | safeHTMLAttr }}{{ end }}>
+          {{ . }}
+        </div>
+      </div>
+    {{ end }}
+
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-between mt-6 dark:text-zinc-100">
+
+      {{ with $profile.interests }}
+      <div class="">
+        <div class="section-subheading mb-3 text-white">{{ i18n "interests" | markdownify }}</div>
+        <ul class="list-disc list-inside space-y-1 pl-5">
+          {{ range . }}
+          <li>
+            {{ . | markdownify | emojify }}
+          </li>
+          {{ end }}
+        </ul>
+      </div>
+      {{ end }}
+
+      {{ with $profile.education }}
+      <div class="">
+        <div class="section-subheading mb-3 text-white">{{ i18n "education" | markdownify }}</div>
+        <ul class="">
+          {{ range . }}
+          <li class="flex items-start gap-x-3">
+            {{ $icon := index . "icon" }}
+            {{ if $icon }}
+              {{ partial "functions/get_icon" (dict "name" $icon "attributes" "class='w-4 h-4 text-secondary-600 dark:text-secondary-400'") }}
+            {{else}}
+              {{ partial "functions/get_icon" (dict "name" "academic-cap" "attributes" "style=\"\" class='flex-shrink-0 w-5 h-5 me-2 mt-1'") }}
+            {{end}}
+            <div class="description">
+              <p class="course font-bold">{{ .degree }}</p>
+              {{if index . "honors" }}
+                <p class="text-sm font-semibold" style="white-space: pre-wrap">{{ index . "honors" }}</p>
+              {{end}}
+              <p class="text-sm">{{ .institution }}</p>
+              <p class="text-sm">
+                {{ $start := index . "start" }}
+                  {{ $end := index . "end" }}
+                  {{ if $start }}
+                    {{ $parsed := try (time $start) }}
+                    {{ if not $parsed.Err }}
+                      {{ $parsed.Value | time.Format $date_format }} –
+                    {{ else }}
+                      {{ $start }} –
+                    {{ end }}
+                  {{ end }}
+                  {{ if $end }}
+                    {{ $parsed := try (time $end) }}
+                    {{ if not $parsed.Err }}
+                      {{ $parsed.Value | time.Format $date_format }}
+                    {{ else }}
+                      {{ $end }}
+                    {{ end }}
+                  {{ else }}
+                    <span class="text-primary-600 dark:text-primary-400 font-medium">{{ i18n "present" | default "Present" }}</span>
+                  {{end}}
+              </p>
+            </div>
+          </li>
+          {{ end }}
+        </ul>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</div>

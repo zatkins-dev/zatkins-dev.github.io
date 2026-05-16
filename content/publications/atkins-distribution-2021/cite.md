@@ -1,0 +1,1 @@
+Zachary R. Atkins, Christopher J. Vogl, Achintya Madduri, Nan Duan, Agnieszka K. Miedlar, and Daniel Merl. 2021. Distribution system voltage prediction from smart inverters using decentralized regression. In *2021 IEEE power & energy society general meeting (PESGM)*, 2021. IEEE, 1–5.
