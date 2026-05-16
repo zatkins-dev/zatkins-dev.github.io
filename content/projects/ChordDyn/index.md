@@ -3,12 +3,15 @@ title: ChordDyn
 date: 2025-08-31
 links:
   - type: code
+    name: Code
     icon: brands/github
     url: https://github.com/zatkins-dev/ChordDyn
   - type: video
+    name: Video
     icon: brands/youtube
     url: https://youtu.be/_BFsdcbie_0
   - type: poster
+    name: Poster
     url: uploads/DynamicsDays24_Poster_Tonnetz.pdf
 tags:
   - Miscellaneous
