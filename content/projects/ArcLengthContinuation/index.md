@@ -4,8 +4,10 @@ date: 2024-05-07
 links:
   - type: code
     icon: brands/github
+    name: Code
     url: https://github.com/zatkins-dev/arc-length-verification
-  - type: pdf
+  - type: btn_pdf
+    name: PDF
     url: atkins-snesnewtonal-report.pdf
 tags:
   - PETSc

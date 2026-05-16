@@ -3,10 +3,13 @@ title: libCEED
 date: 2023-10-26
 links:
   - type: code
+    name: Code
     icon: brands/github
     url: https://github.com/CEED/libCEED
   - type: site
+    name: Docs
     icon: custom/readthedocs
+    url: https://libceed.org/en/latest/
 tags:
   - libCEED
   - C

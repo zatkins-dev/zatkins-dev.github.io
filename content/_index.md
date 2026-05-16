@@ -48,7 +48,7 @@ sections:
         Please reach out to collaborate 😃
     design:
       columns: '1'
-      css_class: pt-8 pb-8
+      css_class: pt-8 pb-8 text-primary
   - block: collection
     id: projects
     content:

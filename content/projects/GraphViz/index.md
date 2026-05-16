@@ -3,6 +3,7 @@ title: Graph Viz
 date: 2026-02-02
 links:
   - type: app
+    name: App
     icon: custom/play
     url: apps/graphviz.html
 tags:
