@@ -15,6 +15,7 @@ sections:
       filters:
         folders:
           - talks
+      sort_by: event_start
     design:
       view: date-title-summary
       fill_image: false

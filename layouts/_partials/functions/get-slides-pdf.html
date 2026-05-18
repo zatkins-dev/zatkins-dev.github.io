@@ -1,0 +1,24 @@
+{{/* Function to retrieve the featured image */}}
+{{/* Inputs: page context */}}
+{{/* Output: image resource, or nil if not found */}}
+{{/*
+    Featured image is searched in this order:
+      1. Search for a file `*slides*.pdf` in the page directory
+      2. Search for a file `.Params.pdf.filename` in the page directory
+      3. Search for a file `.Params.pdf.filename` in the `assets/media/` directory
+*/}}
+{{/* Search for a file "*slides*.pdf" in page folder */}}
+{{- $resource := .Resources.GetMatch "*slides*.pdf" -}}
+{{- if not (reflect.IsResource $resource) -}}
+  {{/* Otherwise fall back the image file specified in front matter */}}
+  {{- $filename := "" -}}
+  {{- if and .Params.pdf (reflect.IsMap .Params.pdf) -}}
+    {{- $filename = .Params.pdf.filename -}}
+  {{- end -}}
+  {{/* Search in page folder */}}
+  {{- $resource = .Resources.GetMatch $filename -}}
+  {{/* Otherwise in `assets/media/` folder */}}
+  {{- if not (reflect.IsResource $resource) -}} {{- $resource = resources.GetMatch (path.Join "media" $filename) -}} {{- end -}}
+{{- end -}}
+
+{{- return $resource -}}

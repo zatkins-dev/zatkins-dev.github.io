@@ -1,0 +1,39 @@
+{{- /*
+=============================================================================
+Slideshow Shortcode
+
+Embeds a presentation responsively. Supports native PDFs, external iframe
+URLs, or raw embed code.
+
+Parameters:
+  - raw     (string) : Path or URL to a PDF file.
+  - ratio   (string,optional) : aspect ratio of embedded PDF
+
+Usage Examples:
+  1. PDF:    {{ partial "functions/slideshow.html" (dict "pdf" ($item.Resources.GetMatch "featured.pdf"))}}
+=============================================================================
+*/ -}}
+{{- $raw := .raw -}}
+{{- $url := .url -}}
+{{- $params := .params -}}
+{{- if not (reflect.IsMap $params) -}}
+  {{- $params = dict "ratio" "16/9" -}}
+{{- end -}}
+{{- $ratio := $params.ratio | default "16/9" -}}
+{{- $ratio_class := (printf "aspect-[%s]" (strings.Replace $ratio " " "")) -}}
+<div class="relative w-full border border-gray-200 rounded-lg overflow-hidden {{ $ratio_class }}">
+  {{- /* 1. Render External Iframe URL */ -}}
+  {{- if $url -}}
+    <iframe src="{{ $url }}" class="w-full h-full border-0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+  {{- /* 2. Render Raw Embed Code */ -}}
+  {{- else if $raw -}}
+    <div class="w-full h-full">
+      {{ $raw | safeHTML }}
+    </div>
+  {{- /* Error State */ -}}
+  {{- else -}}
+    <div class="p-6 text-red-700 bg-red-50 rounded">
+      <strong class="font-bold">Slideshow Error:</strong> Please provide a <code class="px-1 py-0.5 bg-red-100 rounded font-mono text-sm">pdf</code> url, an <code class="px-1 py-0.5 bg-red-100 rounded font-mono text-sm">iframe</code> url, or raw embed code.
+    </div>
+  {{- end -}}
+</div>
