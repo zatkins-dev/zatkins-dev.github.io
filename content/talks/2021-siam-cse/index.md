@@ -1,22 +1,29 @@
 ---
 title: Using Decentralized Learning to Reduce Communication in Column-Partitioned, Multi-Agent Systems
-
-event: SIAM Conference on Computational Science and Engineering 2021
 type: events
+
+event_name: SIAM Conference on Computational Science and Engineering 2021
+event_start: '2021-03-01'
+event_end: '2021-03-05'
+event_all_day: true
+event_url: https://meetings.siam.org/sess/dsp_programsess.cfm?SESSIONCODE=70178
+location: Online
 
 authors:
 - admin
-date: '2021-03-01'
 publishDate: '2025-09-01T01:13:18.549205Z'
 
 links:
-- name: URL
-  url: https://meetings.siam.org/sess/dsp_programsess.cfm?SESSIONCODE=70178
 - type: slides
   url: slides.pptx
 
 tags:
   - SIAM CSE
+
+embed:
+  url: https://1drv.ms/p/c/ca82453dc6ceb885/IQRpeC4C5WQsSoe6uxh3cB7mAQ6bbIi0MhpTBMHnUl61MAk?wdAr=1.7777777777777777
+  raw: |
+    <iframe src="https://1drv.ms/p/c/ca82453dc6ceb885/IQRpeC4C5WQsSoe6uxh3cB7mAQ6bbIi0MhpTBMHnUl61MAk?wdAr=1.7777777777777777" width="100%" height="100%" frameborder="0" title="PowerPoint Viewer">This is an embedded <a target="_blank" href="https://office.com">Microsoft Office</a> presentation, powered by <a target="_blank" href="https://office.com/webapps">Office</a>.</iframe>
 
 abstract: |
   Multi-agent systems introduce new challenges to distributed computing, such as unreliability

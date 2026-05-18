@@ -1,16 +1,19 @@
 ---
 title: Addressing Numerical Challenges in Frictional Contact Simulation for Finite-Deformation Solid Mechanics
-event: 9th SIAM Central States Section Annual Meeting
+event_name: 9th SIAM Central States Section Annual Meeting
+event_url: https://www.siam.org/conferences-events/past-event-archive/siam-central-states-section-annual-meeting-2024/
+event_start: 2024-10-05
+event_end: 2024-10-06
+event_all_day: true
+location: University of Missouri, Kansas City, Missouri, U.S.
+
 type: events
 
 authors:
 - admin
-date: '2024-10-01'
 publishDate: '2025-09-01T01:13:18.567037Z'
 
 links:
-- name: URL
-  url: https://sse.umkc.edu/siam-2024/
 - name: slides
   url: slides.pdf
 

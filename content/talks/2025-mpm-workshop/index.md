@@ -1,6 +1,11 @@
 ---
 title: Grain-Resolving Simulation of Mock-High-Explosives with Ratel Implicit MPM
-event: The 16th Annual MPM Workshop
+event_name: The 16th Annual MPM Workshop
+event_url: https://www.mpmworkshop.com/previous-events
+event_start: 2025-09-11
+event_end: 2025-09-12
+event_all_day: true
+location: University of Colorado Boulder, Boulder, Colorado, U.S.
 type: events
 
 authors:
@@ -9,8 +14,6 @@ date: '2025-09-12'
 publishDate: '2025-12-11'
 
 links:
-- name: URL
-  url: https://www.mpmworkshop.com/previous-events
 - name: slides
   url: slides.pdf
 

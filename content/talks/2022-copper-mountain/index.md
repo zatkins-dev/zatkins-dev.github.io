@@ -1,6 +1,11 @@
 ---
 title: The Algorithmic Development of a Fully Asynchronous Conjugate Gradient Method
-event: 17th Copper Mountain Conference on Iterative Methods
+event_name: 17th Copper Mountain Conference on Iterative Methods
+event_url: https://easychair.org/smart-program/CM2022/2022-04-04.html#talk:187908
+event_start: 2022-03-31
+event_end: 2022-04-08
+event_all_day: true
+location: Online
 type: events
 
 authors:
@@ -14,8 +19,6 @@ publishDate: '2025-09-01T01:13:18.558697Z'
 
 
 links:
-- name: URL
-  url: https://easychair.org/smart-program/CM2022/2022-04-04.html#talk:187908
 - type: slides
   url: slides.pdf
 

@@ -131,7 +131,9 @@
           {{- end -}}
         {{- end -}}
         {{- /* ------------------------------------------------------------------- */ -}}
-        {{- if ne .Params.reading_time false -}}
+        {{- $site_reading_time := site.Params.hugoblox.content.reading_time.enable | default true -}}
+        {{- $reading_time := .Params.reading_time | default $site_reading_time -}}
+        {{- if ne $reading_time false -}}
         <span class="mx-2">·</span>
         <span class="mx-0">
           {{ .ReadingTime }} {{ i18n "minute_read" }}
@@ -152,90 +154,20 @@
       {{- end -}}
       {{- /* Featured image layout */ -}}
       {{- if and $featured (not $image_params.preview_only) -}}
-      {{- /* Fit image within max size. */ -}}
-      {{- $image := $featured -}}
-      {{- /* ------------------------------------------------------------------- */ -}}
-      {{- /* Determine image placement. */ -}}
-      {{- $placement := $image_params.placement | default 1 -}}{{- /* Default to full column width. */ -}}
-      {{- /* Configure responsive processing based on placement */ -}}
-      {{- $image_container := "" -}}
-      {{- $responsive_sizes := slice -}}
-      {{- $sizes_attr := "" -}}
-      {{- if eq $placement 2 -}}
-        {{- $image_container = "container" -}}
-        {{- $responsive_sizes = slice 480 768 1024 1200 1600 -}}
-        {{- $sizes_attr = "(max-width: 480px) 100vw, (max-width: 768px) 90vw, (max-width: 1200px) 80vw, 1200px" -}}
-      {{- else if eq $placement 3 -}}
-        {{- $image_container = "container-fluid" -}}
-        {{- $responsive_sizes = slice 768 1024 1366 1920 2560 -}}
-        {{- $sizes_attr = "(max-width: 768px) 100vw, (max-width: 1366px) 90vw, (max-width: 1920px) 80vw, 2560px" -}}
-      {{- else -}}
-        {{- $image_container = "article-container" -}}
-        {{- $responsive_sizes = slice 320 480 640 720 960 -}}
-        {{- $sizes_attr = "(max-width: 480px) 100vw, (max-width: 640px) 90vw, (max-width: 720px) 80vw, 720px" -}}
-      {{- end -}}
-      {{- /* ------------------------------------------------------------------- */ -}}
-      {{- /*
-        Image processing gate:
-        - reflect.IsImageResourceProcessable → false for SVG (not processable by Hugo).
-        - GIF: processable by Hugo but we skip to preserve animation frames.
-      */ -}}
-      {{- $canProcess := and (reflect.IsImageResourceProcessable $featured) (ne $featured.MediaType.SubType "gif") -}}
-      {{- if not $canProcess -}}
-        {{- /* SVG or GIF: render directly without responsive processing */ -}}
-        <div class="article-header {{$image_container}} featured-image-wrapper mt-4 mb-4">
-          <div style="position: relative">
-            <img src="{{ $featured.RelPermalink }}"
-                 data-pagefind-meta="image[src]"
-                 alt="{{ with $image_params.alt_text }}{{.}}{{ end }}"
-                 class="featured-image"
-                 fetchpriority="high">
-            {{- with $image_params.caption -}}<span class="article-header-caption">{{ . | markdownify | emojify }}</span>{{- end -}}
-          </div>
-        </div>
-      {{- else -}}
-        {{- /* Pre-fit image to placement constraints, then apply responsive processing */ -}}
-        {{- $fitted_image := $featured -}}
-        {{- if eq $placement 2 -}}
-          {{- $fitted_image = $featured.Fit "1200x2500" -}}
-        {{- else if eq $placement 3 -}}
-          {{- $fitted_image = $featured.Fit "2560x2560" -}}
-        {{- else -}}
-          {{- $fitted_image = $featured.Fit "720x2500" -}}
-        {{- end -}}
-        {{- /* ------------------------------------------------------------------- */ -}}
-        {{- $responsive := partial "functions/process_responsive_image.html" (dict
-            "image" $fitted_image
-            "mode" "responsive"
-            "sizes" $responsive_sizes
+        {{- partial "functions/render-responsive-image.html" (dict
+          "image" $featured
+          "image_params" $image_params
         ) -}}
-        {{- /* ------------------------------------------------------------------- */ -}}
-        {{- /* Featured image - use fitted image dimensions for container, responsive for srcset */ -}}
-        <div class="article-header {{$image_container}} featured-image-wrapper mt-4 mb-4" style="max-width: {{$fitted_image.Width}}px; max-height: {{$fitted_image.Height}}px;">
-          <div style="position: relative">
-            <img srcset="{{ $responsive.srcset }}"
-                 sizes="{{ $sizes_attr }}"
-                 src="{{ $responsive.fallback.RelPermalink }}"
-                 data-pagefind-meta="image[src]"
-                 width="{{ $fitted_image.Width }}"
-                 height="{{ $fitted_image.Height }}"
-                 alt="{{ with $image_params.alt_text }}{{.}}{{ end }}"
-                 class="featured-image"
-                 fetchpriority="high">
-            {{- with $image_params.caption -}}<span class="article-header-caption">{{ . | markdownify | emojify }}</span>{{- end -}}
-          </div>
-        </div>
-      {{- end -}}
       {{- end -}}
       {{- /* ------------------------------------------------------------------- */ -}}
       {{- /* EVENT / PUBLICATION METADATA */ -}}
       {{- if .Params.abstract | or (eq .Type "publications") | or (eq .Type "events") -}}
         <div class="max-w-prose grid grid-cols-1 md:grid-cols-[200px_auto] gap-4 my-4">
         {{- /* ------------------------------------------------------------------- */ -}}
-        {{- /* {{- if .Params.abstract -}}
+        {{/* {{- if .Params.abstract -}}
           <div class="font-bold text-2xl">{{ i18n "abstract" }}</div>
           <div>{{ .Params.abstract | markdownify }}</div>
-        {{- end -}} */ -}}
+        {{- end -}} */}}
         {{- /* ------------------------------------------------------------------- */ -}}
         {{- /* If the type is Uncategorized, hide the type. */ -}}
         {{- if $pub_type_display -}}
