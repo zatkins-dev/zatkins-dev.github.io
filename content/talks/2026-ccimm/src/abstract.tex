@@ -1,0 +1,24 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+
+\title{Accelerating Implicit Contact via Matrix-Free Operators on Non-Conforming Interfaces}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+    In continuum solid mechanics, robust and accurate simulation of mesh-to-mesh contact remains a challenging problem to scale to modern GPU-based architectures.
+    In this work, we present a novel matrix-free strategy for evaluating finite element integrals of nonlinear functions and their linearizations consistently across non-conforming and solution-dependent interfaces.
+    To achieve this, we utilize performance-portable libCEED operators capable of evaluating finite element weak forms defined via point-wise quadrature functions at arbitrary located quadrature points in combination with classical approaches from contact mechanics.
+    We demonstrate the application of our method to mesh-to-mesh contact simulation in Ratel, our high-order solid mechanics library.
+
+    In continuum solid mechanics, robust and accurate simulation of mesh-to-mesh contact remains a challenging problem to scale to modern GPU-based architectures.
+    In this work, we present a novel matrix-free strategy for evaluating finite element integrals of nonlinear functions and their linearizations consistently across non-conforming and solution-dependent interfaces. 
+    Crucially, our approach eliminates the need to assemble complex coupling matrices typically required for segmented face intersections. 
+    To achieve this, we utilize a single layout of dynamically determined quadrature points common to both contacting meshes. 
+    By leveraging performance-portable libCEED at-points operators, we can seamlessly extract the necessary points for each surface cell on either side of the interface. 
+    This structural design allows quantities computed at quadrature points on one surface to be mapped directly to the other without copying the underlying vector of values. 
+    We demonstrate the efficiency of this zero-copy, matrix-free operator application for mesh-to-mesh contact simulation in Ratel, our high-order solid mechanics library.
+
+    In continuum solid mechanics, robust and accurate simulation of mesh-to-mesh contact remains a challenging problem to scale to modern GPU-based architectures. In this work, we present a novel matrix-free strategy for evaluating finite element integrals of nonlinear functions and their linearizations consistently across non-conforming and solution-dependent interfaces. To avoid assembling complex coupling matrices for segmented face intersections, we establish a single layout of dynamically determined quadrature points shared by both contacting meshes. By utilizing performance-portable libCEED operators to extract the necessary points for each surface cell, we can map quantities directly across the interface without copying the underlying vector of values. We demonstrate the efficiency of this zero-copy, matrix-free approach for mesh-to-mesh contact simulation in Ratel, our high-performance implicit solid mechanics library.
+\end{abstract}
+\end{document}
